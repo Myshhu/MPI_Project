@@ -52,13 +52,9 @@ extern volatile char end;
 extern MPI_Datatype MPI_PAKIET_T;
 extern pthread_t threadCom, threadM, threadDelay;
 
-/* do użytku wewnętrznego (implementacja opóźnień komunikacyjnych) */
-//extern GQueue *delayStack;
 /* synchro do zmiennej konto */
 extern pthread_mutex_t konto_mut;
 
-/* argument musi być, bo wymaga tego pthreads. Wątek monitora, który po jakimś czasie ma wykryć stan */
-extern void *monitorFunc(void *);
 /* argument musi być, bo wymaga tego pthreads. Wątek komunikacyjny */
 void *comFunc(void *);
 

@@ -92,38 +92,6 @@ typedef struct {
     int dst;
     } stackEl_t;
 
-/* Wątek wprowadzający sztuczne opóźnienia komunikacyjne */
-/*void *delayFunc(void *ptr)
-{
-    while (!end) {
-	int percent = (rand()%2 + 1);
-        struct timespec t = { 0, percent*5000 };
-        struct timespec rem = { 1, 0 };
-        if (!rank)
-        nanosleep(&t,&rem);
-	pthread_mutex_lock( &packetMut );
-	sswer
-g_queue_pop_tail( delayStack );
-	pswer
- &packetMut );
-     swer
-El) {
-	/swer
-%d %p %d\n", end, stackEl, stackEl->type);
-	 swer
-->newP, 1, MPI_PAKIET_T, stackEl->dst, stackEl->type, MPI_COMM_WORLD);
-	 swer
-P);
-	 swer
-
-     swer
-
-    }swer
-
-    return 0;
-}
-*/
-
 void inicjuj(int *argc, char ***argv)
 {
     int provided;
@@ -227,31 +195,6 @@ void mainLoop(void)
     }
 }
 
-/* Wątek monitora - tylko u ROOTa */
-void *monitorFunc(void *ptr)
-{
-    // packet_t data;
-	// /* MONITOR; Jego zadaniem ma być wykrycie, ile kasy jest w systemie */
-
-	// // 5 sekund, coby procesy zdążyły namieszać w stanie globalnym
-    // sleep(3);
-	// // TUTAJ WYKRYWANIE STANu        
-    // int i;
-    // sem_init(&all_sem,0,0);
-    // println("MONITOR START \n");
-    // for (i=0;i<size;i++)  {
-	// sendPacket(&data, i, GIVE_YOUR_STATE);
-    // }
-    // sem_wait(&all_sem);
-
-    // for (i=1;i<size;i++) {
-	// sendPacket(&data, i, FINISH);
-    // }
-    // sendPacket(&data, 0, FINISH);
-    // P_RED; printf("\n\tW systemie jest: [%d]\n\n", sum);P_CLR
-     return 0;
-}
-
 int max(int a, int b) {
     if(a>b) {
         return a;
@@ -308,15 +251,6 @@ void *comFunc(void *ptr)
 void handleRelease(packet_t *pakiet, int numer_statusu)
 {
     //println("Dostalem release\n");
-    // static int statePacketsCnt = 0;
-
-    // statePacketsCnt++;
-    // sum += pakiet->kasa;
-    // println("Suma otrzymana: %d, total: %d\n", pakiet->kasa, sum);
-    // //println( "%d statePackets from %d\n", statePacketsCnt, pakiet->src);
-    // if (statePacketsCnt == size ) {
-    //     sem_post(&all_sem);
-    // }
     
 }
 
@@ -329,9 +263,6 @@ void finishHandler(packet_t *pakiet, int numer_statusu)
 
 void handleRequest(packet_t *pakiet, int numer_statusu)
 {
-    /* monitor prosi, by mu podać stan kasy */
-    /* tutaj odpowiadamy monitorowi, ile mamy kasy. Pamiętać o muteksach! */
-
     packet_t tmp;
     tmp.rank = rank;
     addToQueue(pakiet, numer_statusu);
@@ -370,11 +301,5 @@ void addToQueue(packet_t *pakiet, int numer_statusu) {
 
 void handleAnswer(packet_t *pakiet, int numer_statusu)
 {
-    /* ktoś przysłał mi przelew */
-    //println("Dostalem answer od rank = %d\n", pakiet->rank);
-    /*println("\tdostałem %d od %d\n", pakiet->kasa, pakiet->src);
-    pthread_mutex_lock(&konto_mut);
-	konto+=pakiet->kasa;
-    println("Stan obecny: %d\n", konto);
-    pthread_mutex_unlock(&konto_mut);*/
+
 }
