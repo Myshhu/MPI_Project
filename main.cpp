@@ -214,6 +214,7 @@ int main(int argc, char **argv)
 /* Wątek główny - przesyła innym pieniądze */
 void mainLoop(void)
 {
+  	usleep(100 * (rand() % 100 + 1)); //Żeby pomieszać im pozycje startowe
     packet_t pakiet;
     pakiet.rank = rank;
     pakiet.ts = global_ts;
@@ -339,7 +340,7 @@ void tryToEnterPark() {
 void enterPark() {
 	chce_do_parku = false;
 	println("Uzyskałem licencję, wszedłem do parku");
-	usleep(3000000);
+	usleep(150000);
 	leavePark();
 }
 
