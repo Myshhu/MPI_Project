@@ -10,12 +10,23 @@ sem_t all_sem;
 /* Ile każdy proces ma na początku pieniędzy */
 int konto=STARTING_MONEY;
 
+/* Maksymalna lość licencji */
+int max_licences = 1;
+
+/* Ilość uzyskanych zgód */
+int answers = 0;
 
 /* suma zbierana przez monitor */
 int sum = 0;
 
 /* globalny zegar */
 int global_ts = 0;
+
+/* globalny zegar podczas wysyłania żądania */
+int global_ts_at_REQUEST = -1;
+
+/* czy chce wejsc do parku */
+bool chce_do_parku = true;
 
 /* kolejka */
 std::vector <element_kolejki> kolejka;
@@ -30,6 +41,13 @@ void finishHandler(packet_t *pakiet, int numer_statusu);
 void handleAnswer(packet_t *pakiet, int numer_statusu);
 void handleRelease(packet_t *pakiet, int numer_statusu);
 void addToQueue(packet_t *pakiet, int numer_statusu);
+void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts);
+void sortQueue();
+void queueChanged(std::string a);
+void printQueue(std::string a);
+void deleteFromQueue(int numer_procesu);
+void enterPark();
+void leavePark();
 
 /* typ wskaźnik na funkcję zwracającej void i z argumentem packet_t* */
 typedef void (*f_w)(packet_t *);
@@ -45,9 +63,9 @@ typedef void (*f_w)(packet_t *);
             [RELEASE] = handleRelease };*/
 
 void inicjuj(int *argc, char ***argv);
-extern void finalizuj(void);
+void finalizuj(void);
 //extern char* returnTypeString(int type);
-extern void sendPacket(packet_t *data, int dst, int type);
+void sendPacket(packet_t *data, int dst, int type, int REQUEST_ts);
 
 /**********************
 	init.cpp
@@ -160,12 +178,22 @@ std::string returnTypeString(int type) {
     }
 }
 
-void sendPacket(packet_t *data, int dst, int type)
+void sendPacket(packet_t *data, int dst, int type, int REQUEST_ts) //TODO: Zmienic na argument domyslny
 {
-    data->ts = global_ts;
+    data->ts = global_ts; //TODO: Czy przy broadcastcie tez zmieniamy zegar??? czy zostawiamy
+    // na zegarze który był przy wysyłaniu pierwszego pakietu z broadcasta
+    // bo w przeciwnym wypadku proces któremu pierwszemu wysyłamy release dostanie on wiadomość z
+    // naszym zegarem jako np. 10, a proces któremu jako drugiemu wysyłamy release dostanie 
+    //wiadomość z zegarem już jako 11. //Czy to wpływa na program??
+    //przy requestach jest to zabezpieczone warunkiem niżej
+    if(type == REQUEST) { 
+    //sendPacket zmienia globalny zegar, a podczas requestu chcemy wysłać do wszystkich pakiet
+    // z zegarem, który był przed wysłaniem pierwszego requesta
+    	data->ts = REQUEST_ts;
+    } 
     data->rank = rank;
     global_ts++;
-    println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", returnTypeString(type).c_str(), dst, global_ts - 1, global_ts);
+    println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), dst, global_ts - 1, global_ts);
     MPI_Send(data, 1, MPI_PAKIET_T, dst, type, MPI_COMM_WORLD);
 }
 
@@ -187,9 +215,23 @@ int main(int argc, char **argv)
 void mainLoop(void)
 {
     packet_t pakiet;
-    for(int i = 0; i < size; i++) {
+    pakiet.rank = rank;
+    pakiet.ts = global_ts;
+    global_ts_at_REQUEST = global_ts;
+  	//addToQueue(&pakiet, REQUEST);
+    broadcastMessage(&pakiet, REQUEST, global_ts_at_REQUEST);
+    /*for(int i = 0; i < size; i++) {
         if( i != rank) {
             sendPacket(&pakiet, i, REQUEST);
+            //println("Rank %d, wyslalem REQUEST do %d\n", rank, i);
+        }
+    }*/
+}
+
+void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts) { //TODO: Zmienic na argument domyslny
+	for(int i = 0; i < size; i++) {
+        if( i != rank) {
+            sendPacket(pakiet, i, typ, REQUEST_ts);
             //println("Rank %d, wyslalem REQUEST do %d\n", rank, i);
         }
     }
@@ -250,8 +292,17 @@ void *comFunc(void *ptr)
 /* Handlery */
 void handleRelease(packet_t *pakiet, int numer_statusu)
 {
-    //println("Dostalem release\n");
-    
+	deleteFromQueue(pakiet->rank);
+	addToQueue(pakiet, numer_statusu);
+	//queueChanged("Release");
+}
+
+void deleteFromQueue(int numer_procesu) {
+	for(unsigned int i = 0; i < kolejka.size(); i++) {
+		if(kolejka[i].numer_procesu == numer_procesu) {
+			kolejka.erase(kolejka.begin() + i);
+		}
+	}
 }
 
 void finishHandler(packet_t *pakiet, int numer_statusu)
@@ -267,12 +318,60 @@ void handleRequest(packet_t *pakiet, int numer_statusu)
     tmp.rank = rank;
     addToQueue(pakiet, numer_statusu);
     //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
-    sendPacket(&tmp, pakiet->rank, ANSWER);
+    sendPacket(&tmp, pakiet->rank, ANSWER, -1); //-1, bo dla RELEASE ostatni argument nie jest uzywany
 }
 
-void queueChanged() {
+void tryToEnterPark() {
+	println("Próbuję wejść do parku");
+	if((int)kolejka.size() == size) {
+		for(int i = 0; i < max_licences; i++) {
+			if(kolejka[i].numer_procesu == rank) {
+				enterPark();
+				return;
+			}
+		}
+		println("Nieudało się, park zajęty");
+	} else {
+		println("Nieudało się, bo kolejka.size(): %d != size: %d", (int)kolejka.size(), size);
+	}
+}
+
+void enterPark() {
+	chce_do_parku = false;
+	println("Uzyskałem licencję, wszedłem do parku");
+	usleep(3000000);
+	leavePark();
+}
+
+void leavePark() {
+	packet_t tmppacket; //tmppacket ponieważ broadcast message zmienia jego parametry i się psuje synchronizacja
+	packet_t pakiet;
+	pakiet.rank = rank;
+	pakiet.ts = global_ts;
+	println("Wychodzę z parku, wysyłam release");
+	broadcastMessage(&tmppacket, RELEASE, -1); //-1, bo dla RELEASE ostatni argument nie jest uzywany
+	deleteFromQueue(rank);
+	addToQueue(&pakiet, RELEASE);
+}
+
+void queueChanged(std::string called_at) {
+	sortQueue();
+	printQueue(called_at);
+	if(chce_do_parku) {
+		tryToEnterPark();
+	}
+}
+
+void sortQueue() {
+	std::sort(kolejka.begin(), kolejka.end(), normal_sort());
+	std::sort(kolejka.begin(), kolejka.end(), type_sort());
+}
+
+void printQueue(std::string called_at) {
 	std::string queue_string = "";
 	queue_string += "\n---- Zmieniono kolejkę, wypisuje kolejke: \n";
+	queue_string += called_at.c_str();
+	queue_string += "\n";
 	//println("---- Wypisuje kolejke: ");
 	for(unsigned int i = 0; i < kolejka.size(); i++) {
 		queue_string += "Proces: ";
@@ -295,11 +394,18 @@ void addToQueue(packet_t *pakiet, int numer_statusu) {
 	nowy_element.zegar_procesu = pakiet->ts;
 	nowy_element.typ_komunikatu = numer_statusu;
 	kolejka.push_back(nowy_element);
-	
-	queueChanged();
+	queueChanged("Adding to queue");
 }
 
 void handleAnswer(packet_t *pakiet, int numer_statusu)
 {
-
+	answers++;
+	if(answers == size - 1) {
+		println("Uzyskalem odpowiedzi od wszystkich, dodaje siebie do kolejki");
+		packet_t tmppacket;
+		tmppacket.rank = rank;
+		tmppacket.ts = global_ts_at_REQUEST;
+	  	addToQueue(&tmppacket, REQUEST);
+	  	answers = 0;
+	}
 }

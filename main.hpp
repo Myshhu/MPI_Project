@@ -23,6 +23,7 @@ const int ROOT = 0;
 #include <semaphore.h>
 #include <unistd.h>
 #include <vector>
+#include <algorithm>
 #include <string>
 
 /* FIELDNO: liczba pól w strukturze packet_t */
@@ -45,6 +46,26 @@ typedef struct {
 	int typ_komunikatu;
 	
 } element_kolejki;
+
+struct normal_sort
+{
+	inline bool operator() (const element_kolejki& element1, const element_kolejki& element2)
+	{
+		if(element1.zegar_procesu != element2.zegar_procesu) {
+			return(element1.zegar_procesu < element2.zegar_procesu);
+		} else {
+			return(element1.numer_procesu < element2.numer_procesu);
+		}
+	}
+};
+
+struct type_sort
+{
+	inline bool operator() (const element_kolejki& element1, const element_kolejki& element2)
+	{
+		return(element1.typ_komunikatu < element2.typ_komunikatu);
+	}
+};
 
 extern int rank,size;
 extern int global_ts;
