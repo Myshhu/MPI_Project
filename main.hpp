@@ -73,12 +73,25 @@ extern volatile char end;
 extern MPI_Datatype MPI_PAKIET_T;
 extern pthread_t threadCom, threadM, threadDelay;
 
+/* Deklaracje zapowiadające handlerów. */
+void handleRequest(packet_t *pakiet, int numer_statusu);
+void finishHandler(packet_t *pakiet, int numer_statusu);
+void handleAnswer(packet_t *pakiet, int numer_statusu);
+void handleRelease(packet_t *pakiet, int numer_statusu);
+/**************************/
+
+void mainLoop(void);
+void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts);
+int max(int a, int b);
+void tryToEnterPark();
+void enterPark();
+void leavePark();
+
 /* synchro do zmiennej konto */
 extern pthread_mutex_t konto_mut;
 
 /* argument musi być, bo wymaga tego pthreads. Wątek komunikacyjny */
 void *comFunc(void *);
-
 
 #define PROB_OF_SENDING 35
 #define PROB_OF_PASSIVE 5
