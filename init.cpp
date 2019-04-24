@@ -102,19 +102,9 @@ std::string returnTypeString(int type) {
     }
 }
 
-void sendPacket(packet_t *data, int dst, int type, int REQUEST_ts) //TODO: Zmienic na argument domyslny
+void sendPacket(packet_t *data, int dst, int type)
 {
-    data->ts = global_ts; //TODO: Czy przy broadcastcie tez zmieniamy zegar??? czy zostawiamy
-    // na zegarze który był przy wysyłaniu pierwszego pakietu z broadcasta
-    // bo w przeciwnym wypadku proces któremu pierwszemu wysyłamy release dostanie on wiadomość z
-    // naszym zegarem jako np. 10, a proces któremu jako drugiemu wysyłamy release dostanie 
-    //wiadomość z zegarem już jako 11. //Czy to wpływa na program??
-    //przy requestach jest to zabezpieczone warunkiem niżej
-    if(type == REQUEST) { 
-    //sendPacket zmienia globalny zegar, a podczas requestu chcemy wysłać do wszystkich pakiet
-    // z zegarem, który był przed wysłaniem pierwszego requesta
-    	data->ts = REQUEST_ts;
-    } 
+    data->ts = global_ts; 
     data->rank = rank;
     global_ts++;
     println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), dst, global_ts - 1, global_ts);

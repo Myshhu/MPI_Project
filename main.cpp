@@ -64,25 +64,8 @@ void mainLoop(void)
     pakiet.rank = rank;
     pakiet.ts = global_ts;
     global_ts_at_REQUEST = global_ts;
-  	//addToQueue(&pakiet, REQUEST);
 	sendToAllProces(&pakiet, REQUEST);
-    //broadcastMessage(&pakiet, REQUEST, global_ts_at_REQUEST);
-    /*for(int i = 0; i < size; i++) {
-        if( i != rank) {
-            sendPacket(&pakiet, i, REQUEST);
-            //println("Rank %d, wyslalem REQUEST do %d\n", rank, i);
-        }
-    }*/
 }
-
-/*void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts) { //TODO: Zmienic na argument domyslny
-	for(int i = 0; i < size; i++) {
-        if( i != rank) {
-            sendPacket(pakiet, i, typ, REQUEST_ts);
-            //println("Rank %d, wyslalem REQUEST do %d\n", rank, i);
-        }
-    }
-}*/
 
 int max(int a, int b) {
     if(a>b) {
@@ -154,9 +137,10 @@ void handleRequest(packet_t *pakiet, int numer_statusu)
 {
     packet_t tmp;
     tmp.rank = rank;
+	deleteFromQueue(kolejka_licencji, pakiet->rank);
     addToQueue(kolejka_licencji, pakiet, numer_statusu);
     //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
-    sendPacket(&tmp, pakiet->rank, ANSWER, -1); //-1, bo dla RELEASE ostatni argument nie jest uzywany
+    sendPacket(&tmp, pakiet->rank, ANSWER); //-1, bo dla RELEASE ostatni argument nie jest uzywany
 }
 
 void tryToEnterPark() {
@@ -188,7 +172,6 @@ void leavePark() {
 	pakiet.ts = global_ts;
 	println("Wychodzę z parku, wysyłam release");
 	sendToAllProces(&tmppacket, RELEASE);
-	//broadcastMessage(&tmppacket, RELEASE, -1); //-1, bo dla RELEASE ostatni argument nie jest uzywany
 	deleteFromQueue(kolejka_licencji, rank);
 	addToQueue(kolejka_licencji, &pakiet, RELEASE);
 }
