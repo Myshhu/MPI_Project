@@ -20,7 +20,7 @@ pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 int konto = STARTING_MONEY;
 
 /* Maksymalna lość licencji */
-int max_licences = 1;
+int max_licences = 2;
 
 /* Ilość uzyskanych zgód */
 int answers = 0;
