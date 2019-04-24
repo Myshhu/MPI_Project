@@ -3,3 +3,4 @@ void inicjuj(int *argc, char ***argv);
 void finalizuj(void);
 std::string returnTypeString(int type);
 void sendPacket(packet_t *data, int dst, int type, int REQUEST_ts);
+void sendToAllProces(packet_t *data, int type);

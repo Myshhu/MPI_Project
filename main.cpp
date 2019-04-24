@@ -65,7 +65,8 @@ void mainLoop(void)
     pakiet.ts = global_ts;
     global_ts_at_REQUEST = global_ts;
   	//addToQueue(&pakiet, REQUEST);
-    broadcastMessage(&pakiet, REQUEST, global_ts_at_REQUEST);
+	sendToAllProces(&pakiet, REQUEST);
+    //broadcastMessage(&pakiet, REQUEST, global_ts_at_REQUEST);
     /*for(int i = 0; i < size; i++) {
         if( i != rank) {
             sendPacket(&pakiet, i, REQUEST);
@@ -74,14 +75,14 @@ void mainLoop(void)
     }*/
 }
 
-void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts) { //TODO: Zmienic na argument domyslny
+/*void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts) { //TODO: Zmienic na argument domyslny
 	for(int i = 0; i < size; i++) {
         if( i != rank) {
             sendPacket(pakiet, i, typ, REQUEST_ts);
             //println("Rank %d, wyslalem REQUEST do %d\n", rank, i);
         }
     }
-}
+}*/
 
 int max(int a, int b) {
     if(a>b) {
@@ -186,7 +187,8 @@ void leavePark() {
 	pakiet.rank = rank;
 	pakiet.ts = global_ts;
 	println("Wychodzę z parku, wysyłam release");
-	broadcastMessage(&tmppacket, RELEASE, -1); //-1, bo dla RELEASE ostatni argument nie jest uzywany
+	sendToAllProces(&tmppacket, RELEASE);
+	//broadcastMessage(&tmppacket, RELEASE, -1); //-1, bo dla RELEASE ostatni argument nie jest uzywany
 	deleteFromQueue(kolejka_licencji, rank);
 	addToQueue(kolejka_licencji, &pakiet, RELEASE);
 }
