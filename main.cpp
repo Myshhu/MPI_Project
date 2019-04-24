@@ -22,6 +22,15 @@ int konto = STARTING_MONEY;
 /* Maksymalna lość licencji */
 int max_licences = 2;
 
+/* Maksymalna liczba zajęcy w parku */
+int max_animals = 10;
+
+/* Aktualna liczba zajęcy w parku */
+int current_animals = max_animals;
+
+/* Ile chce upolowac */
+int to_hunt = 3;
+
 /* Ilość uzyskanych zgód */
 int answers = 0;
 
@@ -63,6 +72,7 @@ void mainLoop(void)
     packet_t pakiet;
     pakiet.rank = rank;
     pakiet.ts = global_ts;
+	pakiet.to_hunt = to_hunt;
     global_ts_at_REQUEST = global_ts;
 	sendToAllProces(&pakiet, REQUEST);
 }
@@ -134,13 +144,13 @@ void finishHandler(packet_t *pakiet, int numer_statusu)
 }
 
 void handleRequest(packet_t *pakiet, int numer_statusu)
-{
-    packet_t tmp;
-    tmp.rank = rank;
+{   
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
     addToQueue(kolejka_licencji, pakiet, numer_statusu);
     //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
-    sendPacket(&tmp, pakiet->rank, ANSWER); //-1, bo dla RELEASE ostatni argument nie jest uzywany
+    packet_t tmp;
+	tmp.rank = rank;
+	sendPacket(&tmp, pakiet->rank, ANSWER); //-1, bo dla RELEASE ostatni argument nie jest uzywany
 }
 
 void tryToEnterPark() {
@@ -166,14 +176,15 @@ void enterPark() {
 }
 
 void leavePark() {
-	packet_t tmppacket; //tmppacket ponieważ broadcast message zmienia jego parametry i się psuje synchronizacja
 	packet_t pakiet;
 	pakiet.rank = rank;
 	pakiet.ts = global_ts;
+	pakiet.to_hunt = to_hunt;
 	println("Wychodzę z parku, wysyłam release");
-	sendToAllProces(&tmppacket, RELEASE);
 	deleteFromQueue(kolejka_licencji, rank);
 	addToQueue(kolejka_licencji, &pakiet, RELEASE);
+	sendToAllProces(&pakiet, RELEASE);
+	
 }
 
 void handleAnswer(packet_t *pakiet, int numer_statusu)
@@ -184,6 +195,7 @@ void handleAnswer(packet_t *pakiet, int numer_statusu)
 		packet_t tmppacket;
 		tmppacket.rank = rank;
 		tmppacket.ts = global_ts_at_REQUEST;
+		tmppacket.to_hunt = to_hunt;
 	  	addToQueue(kolejka_licencji, &tmppacket, REQUEST);
 	  	answers = 0;
 	}

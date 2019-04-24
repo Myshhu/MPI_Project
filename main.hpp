@@ -27,13 +27,14 @@ const int ROOT = 0;
 #include <string>
 
 /* FIELDNO: liczba pól w strukturze packet_t */
-#define FIELDNO 4
+#define FIELDNO 5
 typedef struct {
     int ts; /* zegar lamporta */
     int rank; 
 
     int dst; /* pole ustawiane w sendPacket */
     int src; /* pole ustawiane w wątku komunikacyjnym na rank nadawcy */
+	int to_hunt;
     /* przy dodaniu nowych pól zwiększy FIELDNO i zmodyfikuj 
        plik init.c od linijki 76
     */
@@ -44,6 +45,7 @@ typedef struct {
 	int numer_procesu;
 	int zegar_procesu;
 	int typ_komunikatu;
+	int to_hunt;
 	
 } element_kolejki;
 
