@@ -49,14 +49,14 @@ void inicjuj(int *argc, char ***argv)
     /* sklejone z stackoverflow */
     const int nitems = FIELDNO; // Struktura ma FIELDNO elementów - przy dodaniu pola zwiększ FIELDNO w main.h !
     int blocklengths[FIELDNO] = {1,1,1,1,1}; /* tu zwiększyć na [4] = {1,1,1,1} gdy dodamy nowe pole */
-    MPI_Datatype typy[FIELDNO] = {MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT}; /* tu dodać typ nowego pola (np MPI_BYTE, MPI_INT) */
+    MPI_Datatype typy[FIELDNO] = {MPI_INT, MPI_INT,MPI_INT,MPI_INT, MPI_INT}; /* tu dodać typ nowego pola (np MPI_BYTE, MPI_INT) */
     MPI_Aint offsets[FIELDNO];
 
     offsets[0] = offsetof(packet_t, ts);
     offsets[1] = offsetof(packet_t, rank);
     offsets[2] = offsetof(packet_t, dst);
     offsets[3] = offsetof(packet_t, src);
-    offsets[4] = offsetof(packet_t, ile_chce_upolowac);
+    offsets[4] = offsetof(packet_t, to_hunt);
     /* tutaj dodać offset nowego pola (offsets[2] = ... */
 
     MPI_Type_create_struct(nitems, blocklengths, offsets, typy, &MPI_PAKIET_T);
@@ -103,23 +103,26 @@ std::string returnTypeString(int type) {
     }
 }
 
-void sendPacket(packet_t *data, int dst, int type, int REQUEST_ts) //TODO: Zmienic na argument domyslny
+void sendPacket(packet_t *data, int dst, int type)
 {
-    data->ts = global_ts; //TODO: Czy przy broadcastcie tez zmieniamy zegar??? czy zostawiamy
-    // na zegarze który był przy wysyłaniu pierwszego pakietu z broadcasta
-    // bo w przeciwnym wypadku proces któremu pierwszemu wysyłamy release dostanie on wiadomość z
-    // naszym zegarem jako np. 10, a proces któremu jako drugiemu wysyłamy release dostanie 
-    //wiadomość z zegarem już jako 11. //Czy to wpływa na program??
-    //przy requestach jest to zabezpieczone warunkiem niżej
-    if(type == REQUEST) { 
-    //sendPacket zmienia globalny zegar, a podczas requestu chcemy wysłać do wszystkich pakiet
-    // z zegarem, który był przed wysłaniem pierwszego requesta
-    	data->ts = REQUEST_ts;
-    } 
+    data->ts = global_ts; 
     data->rank = rank;
     global_ts++;
     println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), dst, global_ts - 1, global_ts);
     MPI_Send(data, 1, MPI_PAKIET_T, dst, type, MPI_COMM_WORLD);
+}
+
+void sendToAllProces(packet_t *data, int type)
+{
+    data->ts = global_ts;
+    data->rank = rank;
+    global_ts++;
+    for(int i = 0; i < size; i++){
+        if(i != rank){
+            println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), i, global_ts - 1, global_ts);
+            MPI_Send(data, 1, MPI_PAKIET_T, i, type, MPI_COMM_WORLD);
+        }
+    }
 }
 
 

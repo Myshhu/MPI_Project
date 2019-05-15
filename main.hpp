@@ -34,7 +34,7 @@ typedef struct {
 
     int dst; /* pole ustawiane w sendPacket */
     int src; /* pole ustawiane w wątku komunikacyjnym na rank nadawcy */
-	int ile_chce_upolowac;
+	int to_hunt;
     /* przy dodaniu nowych pól zwiększy FIELDNO i zmodyfikuj 
        plik init.c od linijki 76
     */
@@ -46,7 +46,7 @@ typedef struct {
 	int zegar_procesu;
 	int ile_chce_upolowac;
 	int typ_komunikatu;
-	bool czy_zsumowano; //Czy uwzględniono już tego myśliwego przy sprawdzaniu, czy zające są w parku
+	int to_hunt;
 	
 } element_kolejki;
 
