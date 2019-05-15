@@ -20,7 +20,7 @@ pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 int konto = STARTING_MONEY;
 
 /* Maksymalna lość licencji */
-int max_licences = 1;
+int max_licences = 2;
 
 /* Maksymalna liczba zajęcy w parku */
 int max_animals = 5;
@@ -159,6 +159,21 @@ void handleRequest(packet_t *pakiet, int numer_statusu)
 {   
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
     addToQueue(kolejka_licencji, pakiet, numer_statusu);
+
+	for(unsigned int i = 0; i < kolejka_licencji.size(); i++) {
+		println("kolejka_licencji[%d].numer_procesu %d == %d", i, kolejka_licencji[i].numer_procesu, rank);
+		if((kolejka_licencji[i].numer_procesu == rank) || (int)kolejka_licencji.size() != size)  {
+			if(i<max_licences)
+			break;
+		} else {
+			//if(!(kolejka_licencji[i].czy_zsumowano)) 
+			{
+				current_animals = current_animals - kolejka_licencji[i].to_hunt;
+				kolejka_licencji[i].czy_zsumowano = true;
+				println("Odejmuje");
+			}
+		}
+	}
     //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
     packet_t tmp;
 	tmp.rank = rank;
@@ -205,7 +220,7 @@ bool count_animals_alive() {
 	println("iterator = %d", iterator);
 	for(int i = 0; i < iterator; i++) {
 		println("Jestem w petli");
-		//if(!(kolejka_licencji[i].czy_zsumowano)) 
+		if(!(kolejka_licencji[i].czy_zsumowano)) 
 		{
 			println("Zmniejszam current_animals o %d", kolejka_licencji[i].to_hunt);
 			current_animals -= kolejka_licencji[i].to_hunt;
