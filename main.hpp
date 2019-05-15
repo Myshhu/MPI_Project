@@ -45,6 +45,7 @@ typedef struct {
 	int numer_procesu;
 	int zegar_procesu;
 	int typ_komunikatu;
+	bool czy_zsumowano;
 	int to_hunt;
 	
 } element_kolejki;
@@ -88,6 +89,8 @@ int max(int a, int b);
 void tryToEnterPark();
 void enterPark();
 void leavePark();
+bool count_animals_alive();
+void poluj();
 
 /* synchro do zmiennej konto */
 extern pthread_mutex_t konto_mut;
