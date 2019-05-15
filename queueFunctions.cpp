@@ -7,6 +7,8 @@ void addToQueue(std::vector <element_kolejki> &kolejka, packet_t *pakiet, int nu
 	nowy_element.numer_procesu = pakiet->rank;
 	nowy_element.zegar_procesu = pakiet->ts;
 	nowy_element.typ_komunikatu = numer_statusu;
+	nowy_element.ile_chce_upolowac = pakiet->ile_chce_upolowac;
+	nowy_element.czy_zsumowano = false;
 	kolejka.push_back(nowy_element);
 	queueChanged(kolejka);
 }
@@ -35,6 +37,9 @@ void printQueue(std::vector <element_kolejki> &kolejka) {
 		queue_string += std::to_string(kolejka[i].zegar_procesu);
 		queue_string += " Typ: ";
 		queue_string += returnTypeString(kolejka[i].typ_komunikatu).c_str();
+		//queue_string += "\n";
+		queue_string += " Chce upolowac: ";
+		queue_string += std::to_string(kolejka[i].ile_chce_upolowac);
 		queue_string += "\n";
 		//println("---- Proces: %d zegar: %d typ %s", kolejka[i].numer_procesu, kolejka[i].zegar_procesu, returnTypeString(kolejka[i].typ_komunikatu).c_str());
 	}

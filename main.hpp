@@ -27,13 +27,14 @@ const int ROOT = 0;
 #include <string>
 
 /* FIELDNO: liczba pól w strukturze packet_t */
-#define FIELDNO 4
+#define FIELDNO 5
 typedef struct {
     int ts; /* zegar lamporta */
     int rank; 
 
     int dst; /* pole ustawiane w sendPacket */
     int src; /* pole ustawiane w wątku komunikacyjnym na rank nadawcy */
+	int ile_chce_upolowac;
     /* przy dodaniu nowych pól zwiększy FIELDNO i zmodyfikuj 
        plik init.c od linijki 76
     */
@@ -43,7 +44,9 @@ typedef struct {
 
 	int numer_procesu;
 	int zegar_procesu;
+	int ile_chce_upolowac;
 	int typ_komunikatu;
+	bool czy_zsumowano; //Czy uwzględniono już tego myśliwego przy sprawdzaniu, czy zające są w parku
 	
 } element_kolejki;
 
@@ -81,9 +84,12 @@ void handleRelease(packet_t *pakiet, int numer_statusu);
 /**************************/
 
 void mainLoop(void);
+void sendRequest();
 void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts);
 int max(int a, int b);
 void tryToEnterPark();
+bool are_animals_alive();
+void poluj();
 void enterPark();
 void leavePark();
 
