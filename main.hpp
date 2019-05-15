@@ -44,7 +44,6 @@ typedef struct {
 
 	int numer_procesu;
 	int zegar_procesu;
-	int ile_chce_upolowac;
 	int typ_komunikatu;
 	int to_hunt;
 	
@@ -84,12 +83,9 @@ void handleRelease(packet_t *pakiet, int numer_statusu);
 /**************************/
 
 void mainLoop(void);
-void sendRequest();
 void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts);
 int max(int a, int b);
 void tryToEnterPark();
-bool are_animals_alive();
-void poluj();
 void enterPark();
 void leavePark();
 
