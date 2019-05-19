@@ -20,7 +20,7 @@ pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 int konto = STARTING_MONEY;
 
 /* Maksymalna lość licencji */
-int max_licences = 2;
+int max_licences = 1;
 
 /* Maksymalna liczba zajęcy w parku */
 int max_animals = 4;
@@ -47,7 +47,7 @@ int global_ts_at_REQUEST = -1;
 bool chce_do_parku = true;
 
 bool are_animals_alive = true;
-
+int* tablicaPoczatkowa = NULL;
 
 /* kolejka_licencji */
 std::vector <element_kolejki> kolejka_licencji;
@@ -71,6 +71,12 @@ int main(int argc, char **argv)
 /* Wątek główny - przesyła innym pieniądze */
 void mainLoop(void)
 {
+	tablicaPoczatkowa = new int[size];  // Allocate n ints and save ptr in a.
+	for (int i=0; i<size; i++) {
+		tablicaPoczatkowa[i] = 0;    // Initialize all elements to zero.
+	}
+	tablicaPoczatkowa[rank] = to_hunt;
+	
 	usleep(100 * (rand() % 100 + 1)); //Żeby pomieszać im pozycje startowe
     packet_t pakiet;
     pakiet.rank = rank;
@@ -111,6 +117,8 @@ void *comFunc(void *ptr)
 
 	    pthread_mutex_lock(&konto_mut);
         println("Dostałem pakiet %s od procesu %d, zmieniam globalny zegar z %d na %d", returnTypeString((int)status.MPI_TAG).c_str(), pakiet.rank, global_ts, max(global_ts, pakiet.ts) + 1);
+        
+        wypiszTablicePoczatkowa();
         global_ts = max(global_ts, pakiet.ts) + 1;
 	    pthread_mutex_unlock(&konto_mut);
 
@@ -145,6 +153,17 @@ void handleRelease(packet_t *pakiet, int numer_statusu)
 {
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
 	addToQueue(kolejka_licencji, pakiet, numer_statusu);
+	
+	if((int)kolejka_licencji.size() != size) {
+		println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Odejmowanie przy niepełnej kolejce");
+		int do_odjecia = tablicaPoczatkowa[pakiet->rank] - pakiet->to_hunt;
+		tablicaPoczatkowa[pakiet->rank] = pakiet->to_hunt;
+		current_animals -= do_odjecia;
+		if(current_animals <= 0) {
+			current_animals = 0;
+			are_animals_alive = false;
+		}
+	}
 	//queueChanged("Release");
 }
 
@@ -159,19 +178,48 @@ void handleRequest(packet_t *pakiet, int numer_statusu)
 {   
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
     addToQueue(kolejka_licencji, pakiet, numer_statusu);
-
+    
+	odejmowanie();
+	
+	//Dodaj do tablicy poczatkowej
+	tablicaPoczatkowa[pakiet->rank] = pakiet->to_hunt;
     //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
     packet_t tmp;
 	tmp.rank = rank;
 	sendPacket(&tmp, pakiet->rank, ANSWER); //-1, bo dla RELEASE ostatni argument nie jest uzywany
 }
 
+void odejmowanie() {
+    for(unsigned int i = 0; i < kolejka_licencji.size(); i++) {
+		println("kolejka_licencji[%d].numer_procesu %d == %d", i, kolejka_licencji[i].numer_procesu, rank);
+		if((kolejka_licencji[i].numer_procesu == rank) || (int)kolejka_licencji.size() != size)  {
+			break;
+		} else {
+			if(!(kolejka_licencji[i].czy_zsumowano)) 
+			{
+				current_animals = current_animals - kolejka_licencji[i].to_hunt;
+				kolejka_licencji[i].czy_zsumowano = true;
+				println("Odejmuje");
+				if(current_animals <= 0) {
+					current_animals = 0;
+					are_animals_alive = false;
+				}
+			}
+		}
+	}
+}
+
 void tryToEnterPark() {
 	println("Próbuję wejść do parku");
+	odejmowanie();
 	if((int)kolejka_licencji.size() == size) {
 		for(int i = 0; i < max_licences; i++) {
 			if(kolejka_licencji[i].numer_procesu == rank) {
-				enterPark();
+				if(are_animals_alive) {
+					enterPark();
+				} else {
+					println("Nieudało się, bo nie starczyło zwierząt");
+				}
 				return;
 			}
 		}
@@ -184,8 +232,28 @@ void tryToEnterPark() {
 void enterPark() {
 	chce_do_parku = false;
 	println("Uzyskałem licencję, wszedłem do parku");
+	poluj();
 	usleep(150000);
 	leavePark();
+}
+
+void poluj() {
+	println("Poluje, jest %d zwierzat", current_animals);
+	if(current_animals > to_hunt) {
+		println("If 1, current_animals %d, to_hunt %d", current_animals, to_hunt);
+		current_animals -= to_hunt;
+		to_hunt = 0;
+	} else if(current_animals == to_hunt) {
+		println("If 2, current_animals %d, to_hunt %d", current_animals, to_hunt);
+		current_animals = 0;
+		to_hunt = 0;
+	} else {
+		println("If 3, current_animals %d, to_hunt %d", current_animals, to_hunt);
+		to_hunt -= current_animals;
+		current_animals = 0;
+	}
+	tablicaPoczatkowa[rank] = to_hunt;
+	println("After jest %d zwierzat", current_animals);
 }
 
 void leavePark() {
@@ -217,4 +285,12 @@ void handleAnswer(packet_t *pakiet, int numer_statusu)
 	  	addToQueue(kolejka_licencji, &tmppacket, REQUEST);
 	  	answers = 0;
 	}
+}
+
+void wypiszTablicePoczatkowa() {
+	std::string res = "";
+	for(int i = 0; i < size; i++) {
+		res = res + " " + std::to_string(tablicaPoczatkowa[i]);
+	}
+	println("Tablica poczatkowa to: %s", res.c_str());
 }

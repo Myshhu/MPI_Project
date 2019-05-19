@@ -91,6 +91,8 @@ void enterPark();
 void leavePark();
 bool count_animals_alive();
 void poluj();
+void odejmowanie();
+void wypiszTablicePoczatkowa();
 
 /* synchro do zmiennej konto */
 extern pthread_mutex_t konto_mut;
