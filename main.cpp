@@ -20,7 +20,7 @@ int konto = STARTING_MONEY;
 int max_licences = 1;
 
 /* Maksymalna liczba zajęcy w parku */
-int max_animals = 9;
+int max_animals = 2;
 
 /* Aktualna liczba zajęcy w parku */
 int current_animals = max_animals;
@@ -83,7 +83,7 @@ void mainLoop(void)
 		tablicaIleChcaUpolowac[i] = 0;    // Initialize all elements to zero.
 	}
 	
-    if(rank == ROOT) {
+    if(rank == TECHNIK) {
 		to_hunt = 0;
     }
     
@@ -97,7 +97,12 @@ void mainLoop(void)
 	pakiet.to_hunt = to_hunt;
     global_ts_at_REQUEST = global_ts;
     
-	sendToAllProcesses(&pakiet, REQUEST);
+    if(rank == TECHNIK) {
+    	chce_do_parku = false;
+		sendToAllProcesses(&pakiet, RELEASE); //Technik nie chce wejsc do parku
+	} else {
+		sendToAllProcesses(&pakiet, REQUEST);
+	}
 }
 
 void sendRequest() {
@@ -115,6 +120,14 @@ void sendFinish() {
 	pakiet.ts = global_ts;
 	pakiet.to_hunt = to_hunt;
 	sendToAllProcesses(&pakiet, FINISH);
+}
+
+void sendNewAnimalsNotification() {
+	packet_t pakiet;
+	pakiet.rank = rank;
+	pakiet.ts = global_ts;
+	pakiet.to_hunt = to_hunt;
+	sendToAllProcesses(&pakiet, NEWANIMALS);
 }
 
 /* Wątek komunikacyjny - dla każdej otrzymanej wiadomości wywołuje jej handler */
@@ -149,6 +162,9 @@ void *comFunc(void *ptr)
         		case RELEASE:
         			handleRelease(&pakiet, (int)status.MPI_TAG);
         			break;
+    			case NEWANIMALS:
+    				handleNewAnimals(&pakiet, (int)status.MPI_TAG);
+        			break;
         		default:
         			println("Function calling error");
         			break;
@@ -156,9 +172,23 @@ void *comFunc(void *ptr)
         }		
         wypiszTabliceIleChcaUpolowac();
         sprawdzCzyKtosChcePolowac(); //Czy sie nie wywola przed przypisaniem wlasnej wartosci to hunt?
+        
+        if(rank == TECHNIK) {
+        	if(!(are_animals_alive)){
+        		println("Brak zwierzat, probuje wejsc do parku i uzupelniam");
+        		while(kolejka_licencji.size() != size - 1)//ktosJestWParku)
+        		;
+        		
+        		println("Brak zwierzat, wszedlem do parku i uzupelniam");
+        		wejsciaTechnika++;
+        		current_animals = max_animals;
+        		are_animals_alive = true;
+        		sendNewAnimalsNotification();
+        	} 
+        }
     }
     
-    if(rank == ROOT) {
+    if(rank == TECHNIK) {
     	println("Technik został wywołany %d razy", wejsciaTechnika);
     }
     
@@ -174,16 +204,15 @@ void handleRelease(packet_t *pakiet, int numer_statusu)
 	
 	//Odejmowanie przy niepełnej kolejce
 	if((int)kolejka_licencji.size() != size) {
-		println("-------------> Odejmowanie przy niepełnej kolejce <-------------");
 		int do_odjecia = tablicaIleChcaUpolowac[pakiet->rank] - pakiet->to_hunt;
-		//Zaktualizuj tablicę początkową
+		println("-------------> Odejmowanie przy niepełnej kolejce, odejmuje %d zwierzat <-------------", do_odjecia);
 		current_animals -= do_odjecia;
 		if(current_animals <= 0) {
 			current_animals = 0;
 			are_animals_alive = false;
 		}
 	}
-	
+	//Zaktualizuj tablicę początkową
 	tablicaIleChcaUpolowac[pakiet->rank] = pakiet->to_hunt;
 }
 
@@ -219,6 +248,14 @@ void handleAnswer(packet_t *pakiet, int numer_statusu)
 		tmppacket.to_hunt = to_hunt;
 	  	addToQueue(kolejka_licencji, &tmppacket, REQUEST);
 	  	answers = 0;
+	}
+}
+
+void handleNewAnimals(packet_t *pakiet, int numer_statusu) {
+	current_animals = max_animals;
+	are_animals_alive = true;
+	if(chce_do_parku) {
+		tryToEnterPark();
 	}
 }
 /* Koniec handlerów */
@@ -264,7 +301,7 @@ void tryToEnterPark() {
 
 //Funkcja aktualizująca ilość zajęcy, wywoływana przy próbie wejścia do parku
 void przeliczLiczbeZwierzat() {
-	println("Przeliczam liczbe zwierzat");
+	println("Przeliczam liczbe zwierzat, przed przeliczaniem jest %d zwierzat", current_animals);
 	
     for(unsigned int i = 0; i < kolejka_licencji.size(); i++) {
 		if((kolejka_licencji[i].numer_procesu == rank) || (int)kolejka_licencji.size() != size)  {
@@ -283,6 +320,7 @@ void przeliczLiczbeZwierzat() {
 			}
 		}
 	}
+	println("Po przeliczaniu jest %d zwierzat", current_animals);
 }
 
 void enterPark() {

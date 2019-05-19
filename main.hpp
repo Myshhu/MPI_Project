@@ -6,13 +6,15 @@
 #define FALSE 0
 
 const int ROOT = 0;
+const int TECHNIK = ROOT;
 
 #define FINISH 1
 #define REQUEST 2
 #define ANSWER 3
 #define RELEASE 4
+#define NEWANIMALS 5
 /* MAX_HANDLERS musi się równać wartości ostatniego typu pakietu + 1 */
-#define MAX_HANDLERS 5 
+#define MAX_HANDLERS 6 
 
 #define STARTING_MONEY 1000
 
@@ -81,6 +83,7 @@ void handleRequest(packet_t *pakiet, int numer_statusu);
 void finishHandler(packet_t *pakiet, int numer_statusu);
 void handleAnswer(packet_t *pakiet, int numer_statusu);
 void handleRelease(packet_t *pakiet, int numer_statusu);
+void handleNewAnimals(packet_t *pakiet, int numer_statusu);
 /**************************/
 
 void mainLoop(void);
