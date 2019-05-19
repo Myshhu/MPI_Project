@@ -16,7 +16,7 @@ pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 /* Ile każdy proces ma na początku pieniędzy */
 int konto = STARTING_MONEY;
 
-/* Maksymalna lość licencji */
+/* Maksymalna ilość licencji */
 int max_licences = 1;
 
 /* Maksymalna liczba zajęcy w parku */
@@ -48,6 +48,15 @@ int* tablicaIleChcaUpolowac = NULL;
 
 /* kolejka_licencji */
 std::vector <element_kolejki> kolejka_licencji;
+
+/* kolejka_transportu */
+std::vector <element_kolejki> kolejka_transportu;
+
+/* Ilość uzyskanych zgód */
+int answersTransport = 0;
+
+/* Maksymalna ilość transportów */
+int max_transports = 1;
 
 /* end == TRUE oznacza wyjście z main_loop */
 volatile char end = FALSE;
