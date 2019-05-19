@@ -17,7 +17,7 @@ pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 int konto = STARTING_MONEY;
 
 /* Maksymalna ilość licencji */
-int max_licences = 1;
+int max_licences = 3;
 
 /* Maksymalna liczba zajęcy w parku */
 int max_animals = 2;
@@ -61,6 +61,9 @@ int max_transports = 1;
 /* Ile razy technik wchodzil do parku */
 int wejsciaTechnika = 0;
 
+/* Czy w danym programie jest technik */
+bool wlaczonyTechnik = false;
+
 /* end == TRUE oznacza wyjście z main_loop */
 volatile char end = FALSE;
 
@@ -83,7 +86,7 @@ void mainLoop(void)
 		tablicaIleChcaUpolowac[i] = 0;    // Initialize all elements to zero.
 	}
 	
-    if(rank == TECHNIK) {
+    if(rank == TECHNIK && wlaczonyTechnik) {
 		to_hunt = 0;
     }
     
@@ -97,7 +100,7 @@ void mainLoop(void)
 	pakiet.to_hunt = to_hunt;
     global_ts_at_REQUEST = global_ts;
     
-    if(rank == TECHNIK) {
+    if(rank == TECHNIK && wlaczonyTechnik) {
     	chce_do_parku = false;
 		sendToAllProcesses(&pakiet, RELEASE); //Technik nie chce wejsc do parku
 	} else {
@@ -173,16 +176,20 @@ void *comFunc(void *ptr)
         wypiszTabliceIleChcaUpolowac();
         bool czyKtosChcePolowac = sprawdzCzyKtosChcePolowac(); //Czy sie nie wywola przed przypisaniem wlasnej wartosci to hunt?
         	
+        if(!czyKtosChcePolowac && wlaczonyTechnik) {
+        		sendFinish();
+        		end = TRUE;
+        	}
         
-        if(rank == TECHNIK) {
+        if(rank == TECHNIK && wlaczonyTechnik) {
         	if(!czyKtosChcePolowac) {
         		sendFinish();
         		end = TRUE;
         	} else {
 		    	if(!(are_animals_alive)){
 		    		println("Brak zwierzat, probuje wejsc do parku i uzupelniam");
-		    		while((int)kolejka_licencji.size() != size - 1)//ktosJestWParku)
-		    		;
+		    		/*while((int)kolejka_licencji.size() != size - 1)//ktosJestWParku)
+		    		;*/
 		    		
 		    		println("Brak zwierzat, wszedlem do parku i uzupelniam");
 		    		wejsciaTechnika++;
@@ -194,7 +201,7 @@ void *comFunc(void *ptr)
         }
     }
     
-    if(rank == TECHNIK) {
+    if(rank == TECHNIK && wlaczonyTechnik) {
     	println("Technik został wywołany %d razy", wejsciaTechnika);
     }
     
