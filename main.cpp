@@ -154,6 +154,7 @@ void handleRelease(packet_t *pakiet, int numer_statusu)
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
 	addToQueue(kolejka_licencji, pakiet, numer_statusu);
 	
+	//Odejmowanie
 	if((int)kolejka_licencji.size() != size) {
 		println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Odejmowanie przy niepełnej kolejce");
 		int do_odjecia = tablicaPoczatkowa[pakiet->rank] - pakiet->to_hunt;
@@ -164,7 +165,6 @@ void handleRelease(packet_t *pakiet, int numer_statusu)
 			are_animals_alive = false;
 		}
 	}
-	//queueChanged("Release");
 }
 
 void finishHandler(packet_t *pakiet, int numer_statusu)
@@ -179,23 +179,25 @@ void handleRequest(packet_t *pakiet, int numer_statusu)
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
     addToQueue(kolejka_licencji, pakiet, numer_statusu);
     
-	odejmowanie();
+	przeliczLiczbeZwierzat();
 	
-	//Dodaj do tablicy poczatkowej
+	//Zaktualizuj tablicę początkową
 	tablicaPoczatkowa[pakiet->rank] = pakiet->to_hunt;
     //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
     packet_t tmp;
 	tmp.rank = rank;
-	sendPacket(&tmp, pakiet->rank, ANSWER); //-1, bo dla RELEASE ostatni argument nie jest uzywany
+	sendPacket(&tmp, pakiet->rank, ANSWER);
 }
 
-void odejmowanie() {
+//Funkcja aktualizująca ilość zajęcy, wywoływana przy zmianach kolejki
+void przeliczLiczbeZwierzat() {
     for(unsigned int i = 0; i < kolejka_licencji.size(); i++) {
 		println("kolejka_licencji[%d].numer_procesu %d == %d", i, kolejka_licencji[i].numer_procesu, rank);
 		if((kolejka_licencji[i].numer_procesu == rank) || (int)kolejka_licencji.size() != size)  {
 			break;
 		} else {
-			if(!(kolejka_licencji[i].czy_zsumowano)) 
+			//Patrzymy czy zsumowano, bo jeśli proces tylko przesunął się w górę kolejki, to nie chcemy tej ilości odejmować drugi raz
+			if(!(kolejka_licencji[i].czy_zsumowano))
 			{
 				current_animals = current_animals - kolejka_licencji[i].to_hunt;
 				kolejka_licencji[i].czy_zsumowano = true;
@@ -211,7 +213,9 @@ void odejmowanie() {
 
 void tryToEnterPark() {
 	println("Próbuję wejść do parku");
-	odejmowanie();
+	
+	przeliczLiczbeZwierzat();
+	
 	if((int)kolejka_licencji.size() == size) {
 		for(int i = 0; i < max_licences; i++) {
 			if(kolejka_licencji[i].numer_procesu == rank) {

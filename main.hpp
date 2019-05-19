@@ -91,7 +91,7 @@ void enterPark();
 void leavePark();
 bool count_animals_alive();
 void poluj();
-void odejmowanie();
+void przeliczLiczbeZwierzat();
 void wypiszTablicePoczatkowa();
 
 /* synchro do zmiennej konto */
