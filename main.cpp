@@ -20,10 +20,10 @@ pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 int konto = STARTING_MONEY;
 
 /* Maksymalna lość licencji */
-int max_licences = 1;
+int max_licences = 4;
 
 /* Maksymalna liczba zajęcy w parku */
-int max_animals = 4;
+int max_animals = 11;
 
 /* Aktualna liczba zajęcy w parku */
 int current_animals = max_animals;
