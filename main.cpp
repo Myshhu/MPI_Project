@@ -20,13 +20,13 @@ int konto = STARTING_MONEY;
 int max_licences = 3;
 
 /* Maksymalna liczba zajęcy w parku */
-int max_animals = 2;
+int max_animals = 10;
 
 /* Aktualna liczba zajęcy w parku */
 int current_animals = max_animals;
 
 /* Ile chce upolowac */
-int to_hunt = 3;
+int to_hunt = 30;
 
 /* Ilość uzyskanych zgód */
 int answers = 0;
@@ -62,7 +62,7 @@ int max_transports = 1;
 int wejsciaTechnika = 0;
 
 /* Czy w danym programie jest technik */
-bool wlaczonyTechnik = false;
+bool wlaczonyTechnik = true;
 
 /* end == TRUE oznacza wyjście z main_loop */
 volatile char end = FALSE;
@@ -176,10 +176,10 @@ void *comFunc(void *ptr)
         wypiszTabliceIleChcaUpolowac();
         bool czyKtosChcePolowac = sprawdzCzyKtosChcePolowac(); //Czy sie nie wywola przed przypisaniem wlasnej wartosci to hunt?
         	
-        if(!czyKtosChcePolowac && wlaczonyTechnik) {
+        /*if(!czyKtosChcePolowac && wlaczonyTechnik) {
         		sendFinish();
         		end = TRUE;
-        	}
+        	}*/
         
         if(rank == TECHNIK && wlaczonyTechnik) {
         	if(!czyKtosChcePolowac) {
