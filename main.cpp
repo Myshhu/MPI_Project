@@ -7,23 +7,20 @@ pthread_t threadCom, threadM;
 
 /* zamek do synchronizacji zmiennych współdzielonych */
 pthread_mutex_t konto_mut = PTHREAD_MUTEX_INITIALIZER;
-sem_t all_sem;
 
 int rank;
 int size;
 
-pthread_t threadDelay;
-//GQueue *delayStack;
 pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 
 /* Ile każdy proces ma na początku pieniędzy */
 int konto = STARTING_MONEY;
 
 /* Maksymalna lość licencji */
-int max_licences = 3;
+int max_licences = 5;
 
 /* Maksymalna liczba zajęcy w parku */
-int max_animals = 12;
+int max_animals = 7;
 
 /* Aktualna liczba zajęcy w parku */
 int current_animals = max_animals;
@@ -47,7 +44,7 @@ int global_ts_at_REQUEST = -1;
 bool chce_do_parku = true;
 
 bool are_animals_alive = true;
-int* tablicaPoczatkowa = NULL;
+int* tablicaIleChcaUpolowac = NULL;
 
 /* kolejka_licencji */
 std::vector <element_kolejki> kolejka_licencji;
@@ -68,22 +65,24 @@ int main(int argc, char **argv)
 }
 
 
-/* Wątek główny - przesyła innym pieniądze */
+/* Wątek główny */
 void mainLoop(void)
 {
-	tablicaPoczatkowa = new int[size];  // Allocate n ints and save ptr in a.
+	tablicaIleChcaUpolowac = new int[size];  // Allocate n ints and save ptr in a.
 	for (int i=0; i<size; i++) {
-		tablicaPoczatkowa[i] = 0;    // Initialize all elements to zero.
+		tablicaIleChcaUpolowac[i] = 0;    // Initialize all elements to zero.
 	}
-	tablicaPoczatkowa[rank] = to_hunt;
+	tablicaIleChcaUpolowac[rank] = to_hunt;
 	
 	usleep(100 * (rand() % 100 + 1)); //Żeby pomieszać im pozycje startowe
+	
     packet_t pakiet;
     pakiet.rank = rank;
     pakiet.ts = global_ts;
 	pakiet.to_hunt = to_hunt;
     global_ts_at_REQUEST = global_ts;
-	sendToAllProces(&pakiet, REQUEST);
+    
+	sendToAllProcesses(&pakiet, REQUEST);
 }
 
 void sendRequest() {
@@ -92,17 +91,8 @@ void sendRequest() {
     pakiet.ts = global_ts;
 	pakiet.to_hunt = to_hunt;
     global_ts_at_REQUEST = global_ts;
-	sendToAllProces(&pakiet, REQUEST);
+	sendToAllProcesses(&pakiet, REQUEST);
 }
-
-int max(int a, int b) {
-    if(a>b) {
-        return a;
-    } else {
-        return b;
-    }
-}
-
 
 /* Wątek komunikacyjny - dla każdej otrzymanej wiadomości wywołuje jej handler */
 void *comFunc(void *ptr)
@@ -153,10 +143,10 @@ void handleRelease(packet_t *pakiet, int numer_statusu)
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
 	addToQueue(kolejka_licencji, pakiet, numer_statusu);
 	
-	//Odejmowanie
+	//Odejmowanie przy niepełnej kolejce
 	if((int)kolejka_licencji.size() != size) {
 		println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Odejmowanie przy niepełnej kolejce");
-		int do_odjecia = tablicaPoczatkowa[pakiet->rank] - pakiet->to_hunt;
+		int do_odjecia = tablicaIleChcaUpolowac[pakiet->rank] - pakiet->to_hunt;
 		//Zaktualizuj tablicę początkową
 		current_animals -= do_odjecia;
 		if(current_animals <= 0) {
@@ -165,7 +155,7 @@ void handleRelease(packet_t *pakiet, int numer_statusu)
 		}
 	}
 	
-	tablicaPoczatkowa[pakiet->rank] = pakiet->to_hunt;
+	tablicaIleChcaUpolowac[pakiet->rank] = pakiet->to_hunt;
 }
 
 void finishHandler(packet_t *pakiet, int numer_statusu)
@@ -179,37 +169,37 @@ void handleRequest(packet_t *pakiet, int numer_statusu)
 {   
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
     addToQueue(kolejka_licencji, pakiet, numer_statusu);
-    
-	przeliczLiczbeZwierzat();
 	
 	//Zaktualizuj tablicę początkową
-	tablicaPoczatkowa[pakiet->rank] = pakiet->to_hunt;
+	tablicaIleChcaUpolowac[pakiet->rank] = pakiet->to_hunt;
+	
     //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
     packet_t tmp;
 	tmp.rank = rank;
 	sendPacket(&tmp, pakiet->rank, ANSWER);
 }
 
-//Funkcja aktualizująca ilość zajęcy, wywoływana przy zmianach kolejki
-void przeliczLiczbeZwierzat() {
-    for(unsigned int i = 0; i < kolejka_licencji.size(); i++) {
-		println("kolejka_licencji[%d].numer_procesu %d == %d", i, kolejka_licencji[i].numer_procesu, rank);
-		if((kolejka_licencji[i].numer_procesu == rank) || (int)kolejka_licencji.size() != size)  {
-			break;
-		} else {
-			//Patrzymy czy zsumowano, bo jeśli proces tylko przesunął się w górę kolejki, to nie chcemy tej ilości odejmować drugi raz
-			if(!(kolejka_licencji[i].czy_zsumowano))
-			{
-				current_animals = current_animals - kolejka_licencji[i].to_hunt;
-				kolejka_licencji[i].czy_zsumowano = true;
-				println("Odejmuje");
-				if(current_animals <= 0) {
-					current_animals = 0;
-					are_animals_alive = false;
-				}
-			}
-		}
+void handleAnswer(packet_t *pakiet, int numer_statusu)
+{
+	answers++;
+	if(answers == size - 1) {
+		println("Uzyskalem odpowiedzi od wszystkich, dodaje siebie do kolejki");
+		packet_t tmppacket;
+		tmppacket.rank = rank;
+		tmppacket.ts = global_ts_at_REQUEST;
+		tmppacket.to_hunt = to_hunt;
+	  	addToQueue(kolejka_licencji, &tmppacket, REQUEST);
+	  	answers = 0;
 	}
+}
+/* Koniec handlerów */
+
+void wypiszTablicePoczatkowa() {
+	std::string res = "";
+	for(int i = 0; i < size; i++) {
+		res = res + " " + std::to_string(tablicaIleChcaUpolowac[i]);
+	}
+	println("Tablica poczatkowa to: %s", res.c_str());
 }
 
 void tryToEnterPark() {
@@ -231,6 +221,28 @@ void tryToEnterPark() {
 		println("Nieudało się, park zajęty");
 	} else {
 		println("Nieudało się, bo kolejka_licencji.size(): %d != size: %d", (int)kolejka_licencji.size(), size);
+	}
+}
+
+//Funkcja aktualizująca ilość zajęcy, wywoływana przy próbie wejścia do parku
+void przeliczLiczbeZwierzat() {
+    for(unsigned int i = 0; i < kolejka_licencji.size(); i++) {
+		println("kolejka_licencji[%d].numer_procesu %d == %d", i, kolejka_licencji[i].numer_procesu, rank);
+		if((kolejka_licencji[i].numer_procesu == rank) || (int)kolejka_licencji.size() != size)  {
+			break;
+		} else {
+			//Patrzymy czy zsumowano, bo jeśli proces tylko przesunął się w górę kolejki, to nie chcemy tej ilości odejmować drugi raz
+			if(!(kolejka_licencji[i].czy_zsumowano))
+			{
+				current_animals = current_animals - kolejka_licencji[i].to_hunt;
+				kolejka_licencji[i].czy_zsumowano = true;
+				println("Odejmuje");
+				if(current_animals <= 0) {
+					current_animals = 0;
+					are_animals_alive = false;
+				}
+			}
+		}
 	}
 }
 
@@ -260,7 +272,7 @@ void poluj() {
 		to_hunt -= current_animals;
 		current_animals = 0;
 	}
-	tablicaPoczatkowa[rank] = to_hunt;
+	tablicaIleChcaUpolowac[rank] = to_hunt;
 	println("After jest %d zwierzat", current_animals);
 }
 
@@ -272,34 +284,19 @@ void leavePark() {
 	println("Wychodzę z parku, po wyjsciu chce upolowac %d, wysyłam release", to_hunt);
 	deleteFromQueue(kolejka_licencji, rank);
 	addToQueue(kolejka_licencji, &pakiet, RELEASE);
-	sendToAllProces(&pakiet, RELEASE);
+	sendToAllProcesses(&pakiet, RELEASE);
 
 	if(chce_do_parku == true) {
 		//Usuwamy swój pakiet release ze swojej kolejki i zaczynamy całą procedurę uzyskania licencji od nowa
 		deleteFromQueue(kolejka_licencji, rank);
 		sendRequest();
 	}
-	
 }
 
-void handleAnswer(packet_t *pakiet, int numer_statusu)
-{
-	answers++;
-	if(answers == size - 1) {
-		println("Uzyskalem odpowiedzi od wszystkich, dodaje siebie do kolejki");
-		packet_t tmppacket;
-		tmppacket.rank = rank;
-		tmppacket.ts = global_ts_at_REQUEST;
-		tmppacket.to_hunt = to_hunt;
-	  	addToQueue(kolejka_licencji, &tmppacket, REQUEST);
-	  	answers = 0;
-	}
-}
-
-void wypiszTablicePoczatkowa() {
-	std::string res = "";
-	for(int i = 0; i < size; i++) {
-		res = res + " " + std::to_string(tablicaPoczatkowa[i]);
-	}
-	println("Tablica poczatkowa to: %s", res.c_str());
+int max(int a, int b) {
+    if(a>b) {
+        return a;
+    } else {
+        return b;
+    }
 }
