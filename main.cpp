@@ -20,10 +20,10 @@ pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 int konto = STARTING_MONEY;
 
 /* Maksymalna lość licencji */
-int max_licences = 4;
+int max_licences = 3;
 
 /* Maksymalna liczba zajęcy w parku */
-int max_animals = 11;
+int max_animals = 12;
 
 /* Aktualna liczba zajęcy w parku */
 int current_animals = max_animals;
@@ -118,7 +118,6 @@ void *comFunc(void *ptr)
 	    pthread_mutex_lock(&konto_mut);
         println("Dostałem pakiet %s od procesu %d, zmieniam globalny zegar z %d na %d", returnTypeString((int)status.MPI_TAG).c_str(), pakiet.rank, global_ts, max(global_ts, pakiet.ts) + 1);
         
-        wypiszTablicePoczatkowa();
         global_ts = max(global_ts, pakiet.ts) + 1;
 	    pthread_mutex_unlock(&konto_mut);
 
@@ -142,7 +141,7 @@ void *comFunc(void *ptr)
         			break;
         	}
         }		
-
+        wypiszTablicePoczatkowa();
     }
     println(" Koniec! ");
     return 0;
@@ -158,13 +157,15 @@ void handleRelease(packet_t *pakiet, int numer_statusu)
 	if((int)kolejka_licencji.size() != size) {
 		println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Odejmowanie przy niepełnej kolejce");
 		int do_odjecia = tablicaPoczatkowa[pakiet->rank] - pakiet->to_hunt;
-		tablicaPoczatkowa[pakiet->rank] = pakiet->to_hunt;
+		//Zaktualizuj tablicę początkową
 		current_animals -= do_odjecia;
 		if(current_animals <= 0) {
 			current_animals = 0;
 			are_animals_alive = false;
 		}
 	}
+	
+	tablicaPoczatkowa[pakiet->rank] = pakiet->to_hunt;
 }
 
 void finishHandler(packet_t *pakiet, int numer_statusu)
@@ -237,6 +238,9 @@ void enterPark() {
 	chce_do_parku = false;
 	println("Uzyskałem licencję, wszedłem do parku");
 	poluj();
+	if(to_hunt > 0) {
+		chce_do_parku = true;
+	}
 	usleep(150000);
 	leavePark();
 }
@@ -265,12 +269,13 @@ void leavePark() {
 	pakiet.rank = rank;
 	pakiet.ts = global_ts;
 	pakiet.to_hunt = to_hunt;
-	println("Wychodzę z parku, wysyłam release");
+	println("Wychodzę z parku, po wyjsciu chce upolowac %d, wysyłam release", to_hunt);
 	deleteFromQueue(kolejka_licencji, rank);
 	addToQueue(kolejka_licencji, &pakiet, RELEASE);
 	sendToAllProces(&pakiet, RELEASE);
 
 	if(chce_do_parku == true) {
+		//Usuwamy swój pakiet release ze swojej kolejki i zaczynamy całą procedurę uzyskania licencji od nowa
 		deleteFromQueue(kolejka_licencji, rank);
 		sendRequest();
 	}
