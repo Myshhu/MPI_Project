@@ -89,10 +89,9 @@ int max(int a, int b);
 void tryToEnterPark();
 void enterPark();
 void leavePark();
-bool count_animals_alive();
 void poluj();
 void przeliczLiczbeZwierzat();
-void wypiszTablicePoczatkowa();
+void wypiszTabliceIleChcaUpolowac();
 
 /* synchro do zmiennej konto */
 extern pthread_mutex_t konto_mut;

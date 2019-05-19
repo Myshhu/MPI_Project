@@ -20,7 +20,7 @@ int konto = STARTING_MONEY;
 int max_licences = 1;
 
 /* Maksymalna liczba zajęcy w parku */
-int max_animals = 7;
+int max_animals = 9;
 
 /* Aktualna liczba zajęcy w parku */
 int current_animals = max_animals;
@@ -129,7 +129,7 @@ void *comFunc(void *ptr)
         			break;
         	}
         }		
-        wypiszTablicePoczatkowa();
+        wypiszTabliceIleChcaUpolowac();
     }
     println(" Koniec! ");
     return 0;
@@ -192,12 +192,12 @@ void handleAnswer(packet_t *pakiet, int numer_statusu)
 }
 /* Koniec handlerów */
 
-void wypiszTablicePoczatkowa() {
+void wypiszTabliceIleChcaUpolowac() {
 	std::string res = "";
 	for(int i = 0; i < size; i++) {
 		res = res + " " + std::to_string(tablicaIleChcaUpolowac[i]);
 	}
-	println("Tablica poczatkowa to: %s", res.c_str());
+	println("Tablica z wartościami ile chcą upolować to: %s", res.c_str());
 }
 
 void tryToEnterPark() {
