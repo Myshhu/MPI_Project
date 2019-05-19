@@ -95,7 +95,7 @@ void leavePark();
 void poluj();
 void przeliczLiczbeZwierzat();
 void wypiszTabliceIleChcaUpolowac();
-void sprawdzCzyKtosChcePolowac();
+bool sprawdzCzyKtosChcePolowac();
 void sendFinish();
 
 /* synchro do zmiennej konto */

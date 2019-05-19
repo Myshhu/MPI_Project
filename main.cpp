@@ -171,19 +171,25 @@ void *comFunc(void *ptr)
         	}
         }		
         wypiszTabliceIleChcaUpolowac();
-        sprawdzCzyKtosChcePolowac(); //Czy sie nie wywola przed przypisaniem wlasnej wartosci to hunt?
+        bool czyKtosChcePolowac = sprawdzCzyKtosChcePolowac(); //Czy sie nie wywola przed przypisaniem wlasnej wartosci to hunt?
+        	
         
         if(rank == TECHNIK) {
-        	if(!(are_animals_alive)){
-        		println("Brak zwierzat, probuje wejsc do parku i uzupelniam");
-        		while(kolejka_licencji.size() != size - 1)//ktosJestWParku)
-        		;
-        		
-        		println("Brak zwierzat, wszedlem do parku i uzupelniam");
-        		wejsciaTechnika++;
-        		current_animals = max_animals;
-        		are_animals_alive = true;
-        		sendNewAnimalsNotification();
+        	if(!czyKtosChcePolowac) {
+        		sendFinish();
+        		end = TRUE;
+        	} else {
+		    	if(!(are_animals_alive)){
+		    		println("Brak zwierzat, probuje wejsc do parku i uzupelniam");
+		    		while((int)kolejka_licencji.size() != size - 1)//ktosJestWParku)
+		    		;
+		    		
+		    		println("Brak zwierzat, wszedlem do parku i uzupelniam");
+		    		wejsciaTechnika++;
+		    		current_animals = max_animals;
+		    		are_animals_alive = true;
+		    		sendNewAnimalsNotification();
+		    	}
         	} 
         }
     }
@@ -268,13 +274,14 @@ void wypiszTabliceIleChcaUpolowac() {
 	println("Tablica z wartościami ile chcą upolować to: %s", res.c_str());
 }
 
-void sprawdzCzyKtosChcePolowac() {
+bool sprawdzCzyKtosChcePolowac() {
 	for(int i = 0; i < size; i++) {
 		if(tablicaIleChcaUpolowac[i] > 0) {
-			return;
+			return true;
 		}
 	}
-	sendFinish();
+	//sendFinish();
+	return false;
 }
 
 void tryToEnterPark() {
