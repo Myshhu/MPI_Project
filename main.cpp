@@ -58,6 +58,9 @@ int answersTransport = 0;
 /* Maksymalna ilość transportów */
 int max_transports = 1;
 
+/* Ile razy technik wchodzil do parku */
+int wejsciaTechnika = 0;
+
 /* end == TRUE oznacza wyjście z main_loop */
 volatile char end = FALSE;
 
@@ -79,6 +82,11 @@ void mainLoop(void)
 	for (int i=0; i<size; i++) {
 		tablicaIleChcaUpolowac[i] = 0;    // Initialize all elements to zero.
 	}
+	
+    if(rank == ROOT) {
+		to_hunt = 0;
+    }
+    
 	tablicaIleChcaUpolowac[rank] = to_hunt;
 	
 	usleep(100 * (rand() % 100 + 1)); //Żeby pomieszać im pozycje startowe
@@ -99,6 +107,14 @@ void sendRequest() {
 	pakiet.to_hunt = to_hunt;
     global_ts_at_REQUEST = global_ts;
 	sendToAllProcesses(&pakiet, REQUEST);
+}
+
+void sendFinish() {
+	packet_t pakiet;
+	pakiet.rank = rank;
+	pakiet.ts = global_ts;
+	pakiet.to_hunt = to_hunt;
+	sendToAllProcesses(&pakiet, FINISH);
 }
 
 /* Wątek komunikacyjny - dla każdej otrzymanej wiadomości wywołuje jej handler */
@@ -139,7 +155,13 @@ void *comFunc(void *ptr)
         	}
         }		
         wypiszTabliceIleChcaUpolowac();
+        sprawdzCzyKtosChcePolowac(); //Czy sie nie wywola przed przypisaniem wlasnej wartosci to hunt?
     }
+    
+    if(rank == ROOT) {
+    	println("Technik został wywołany %d razy", wejsciaTechnika);
+    }
+    
     println(" Koniec! ");
     return 0;
 }
@@ -207,6 +229,15 @@ void wypiszTabliceIleChcaUpolowac() {
 		res = res + " " + std::to_string(tablicaIleChcaUpolowac[i]);
 	}
 	println("Tablica z wartościami ile chcą upolować to: %s", res.c_str());
+}
+
+void sprawdzCzyKtosChcePolowac() {
+	for(int i = 0; i < size; i++) {
+		if(tablicaIleChcaUpolowac[i] > 0) {
+			return;
+		}
+	}
+	sendFinish();
 }
 
 void tryToEnterPark() {

@@ -92,6 +92,8 @@ void leavePark();
 void poluj();
 void przeliczLiczbeZwierzat();
 void wypiszTabliceIleChcaUpolowac();
+void sprawdzCzyKtosChcePolowac();
+void sendFinish();
 
 /* synchro do zmiennej konto */
 extern pthread_mutex_t konto_mut;
