@@ -112,7 +112,7 @@ void sendPacket(packet_t *data, int dst, int type)
     MPI_Send(data, 1, MPI_PAKIET_T, dst, type, MPI_COMM_WORLD);
 }
 
-void sendToAllProces(packet_t *data, int type)
+void sendToAllProcesses(packet_t *data, int type)
 {
     data->ts = global_ts;
     data->rank = rank;
