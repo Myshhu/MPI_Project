@@ -43,6 +43,9 @@ int global_ts_at_REQUEST = -1;
 /* czy chce wejsc do parku */
 bool chce_do_parku = true;
 
+/* Czy jestem w parku */
+bool jestem_w_parku = false;
+
 bool are_animals_alive = true;
 int* tablicaIleChcaUpolowac = NULL;
 
@@ -168,6 +171,9 @@ void *comFunc(void *ptr)
     			case NEWANIMALS:
     				handleNewAnimals(&pakiet, (int)status.MPI_TAG);
         			break;
+        		case REQUESTTRANSPORT:
+        			handleRequestTransport(&pakiet, (int)status.MPI_TAG);
+        			break;
         		default:
         			println("Function calling error");
         			break;
@@ -213,6 +219,7 @@ void *comFunc(void *ptr)
 void handleRelease(packet_t *pakiet, int numer_statusu)
 {
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
+	deleteFromQueue(kolejka_transportu, pakiet->rank);
 	addToQueue(kolejka_licencji, pakiet, numer_statusu);
 	
 	//Odejmowanie przy niepełnej kolejce
@@ -269,6 +276,13 @@ void handleNewAnimals(packet_t *pakiet, int numer_statusu) {
 	are_animals_alive = true;
 	if(chce_do_parku) {
 		tryToEnterPark();
+	}
+}
+
+void handleRequestTransport(packet_t *pakiet, int numer_statusu) {
+	addToTransportQueue(kolejka_transportu, pakiet, REQUESTTRANSPORT);
+	if(jestem_w_parku) {
+		sprobujWyjscZParku();
 	}
 }
 /* Koniec handlerów */
@@ -339,14 +353,19 @@ void przeliczLiczbeZwierzat() {
 
 void enterPark() {
 	chce_do_parku = false;
+	jestem_w_parku = true;
 	println("Uzyskałem licencję, wszedłem do parku");
 	poluj();
 	if(to_hunt > 0) {
 		chce_do_parku = true;
 	}
+	if(current_animals <= 0) {
+		current_animals = 0;
+		are_animals_alive = false;
+	}
 	zdobadzTransport();
 	usleep(150000);
-	leavePark();
+	//leavePark();
 }
 
 void poluj() {
@@ -366,22 +385,66 @@ void poluj() {
 }
 
 void zdobadzTransport() {
+
+	packet_t pakiet;
+	pakiet.rank = rank;
+	pakiet.ts = global_ts;
+	pakiet.to_hunt = to_hunt;
 	//Wyslij RequestTransport
+	sendToAllProcesses(&pakiet, REQUESTTRANSPORT);
+	addToTransportQueue(kolejka_transportu, &pakiet, REQUESTTRANSPORT);
+	sprobujWyjscZParku();
+
+
+
 	//Czekaj az kolejka_transportu.size() == max_licences || size - 1 (bo technik nie bedzie chcial transportu, lub size gdy nie ma technika) ||
 	// || maksymalna ilosci tych, ktorzy chca polowac czyli ilosc komorek w tablicy kto chce polowac > 0)
+	//Posortuj ją według zegarów, następnie według ID procesów
 	//Gdy dostalem transport, czyli moja pozycja w tej kolejce z uwzglednieniem maksymalnej ilosci transportow pozwala mi na transport
 	//Wtedy wychodze z parku i wysylam release.
 	
 	//TODO: Dodać w requestRelease usuwanie pozycji z kolejki_transportu
 	//TODO: Dodać w techniku sprawdzanie czy nie ma nikogo w parku na podstawie kolejki_transportow == 0 oraz current_animals = 0
 }
+
+void sprobujWyjscZParku() {
+	println("Czekam na transport");
+	int ileMysliwych = ileProcesowChcePolowac();
+	if((int)kolejka_transportu.size() == max_transports ||
+			(int)kolejka_transportu.size() == size - 1 ||
+			(int)kolejka_transportu.size() == ileMysliwych) {
+		for(int i = 0; i < max_transports; i++) {
+			if(kolejka_transportu[i].numer_procesu == rank) {
+				println("Uzyskalem transport, wychodze z parku");
+				leavePark();
+			}
+		}
+		println("Brak wolnych transportów");
+	}
+	println("Brak transportu - kolejka transportów niepełna");
+}
+
+int ileProcesowChcePolowac() {
+	int result = 0;
+	for(int i = 0; i < size; i++) {
+		if(tablicaIleChcaUpolowac[i] > 0) {
+			result++;
+		}
+	}
+	return result;
+} 
+
 void leavePark() {
 	packet_t pakiet;
 	pakiet.rank = rank;
 	pakiet.ts = global_ts;
 	pakiet.to_hunt = to_hunt;
 	println("Wychodzę z parku, po wyjsciu chce upolowac %d, wysyłam RELEASE", to_hunt);
+	
+	jestem_w_parku = false;
+	
 	deleteFromQueue(kolejka_licencji, rank);
+	deleteFromQueue(kolejka_transportu, rank);
 	addToQueue(kolejka_licencji, &pakiet, RELEASE);
 	sendToAllProcesses(&pakiet, RELEASE);
 

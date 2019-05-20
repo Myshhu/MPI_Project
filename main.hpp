@@ -85,6 +85,7 @@ void finishHandler(packet_t *pakiet, int numer_statusu);
 void handleAnswer(packet_t *pakiet, int numer_statusu);
 void handleRelease(packet_t *pakiet, int numer_statusu);
 void handleNewAnimals(packet_t *pakiet, int numer_statusu);
+void handleRequestTransport(packet_t *pakiet, int numer_statusu);
 /**************************/
 
 void mainLoop(void);
@@ -94,11 +95,13 @@ void tryToEnterPark();
 void enterPark();
 void leavePark();
 void poluj();
+void sprobujWyjscZParku();
 void zdobadzTransport();
 void przeliczLiczbeZwierzat();
 void wypiszTabliceIleChcaUpolowac();
 bool sprawdzCzyKtosChcePolowac();
 void sendFinish();
+int ileProcesowChcePolowac();
 
 /* synchro do zmiennej konto */
 extern pthread_mutex_t konto_mut;
