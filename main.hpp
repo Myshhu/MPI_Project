@@ -13,8 +13,9 @@ const int TECHNIK = ROOT;
 #define ANSWER 3
 #define RELEASE 4
 #define NEWANIMALS 5
+#define REQUESTTRANSPORT 6
 /* MAX_HANDLERS musi się równać wartości ostatniego typu pakietu + 1 */
-#define MAX_HANDLERS 6 
+#define MAX_HANDLERS 7 
 
 #define STARTING_MONEY 1000
 
@@ -93,6 +94,7 @@ void tryToEnterPark();
 void enterPark();
 void leavePark();
 void poluj();
+void zdobadzTransport();
 void przeliczLiczbeZwierzat();
 void wypiszTabliceIleChcaUpolowac();
 bool sprawdzCzyKtosChcePolowac();

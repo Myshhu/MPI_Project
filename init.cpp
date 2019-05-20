@@ -100,6 +100,8 @@ std::string returnTypeString(int type) {
             return "RELEASE";
 		case 5:
 			return "NEWANIMALS";
+		case 6:
+			return "REQUESTTRANSPORT";
         default:
             return "ERROR";
     }

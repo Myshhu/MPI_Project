@@ -344,6 +344,7 @@ void enterPark() {
 	if(to_hunt > 0) {
 		chce_do_parku = true;
 	}
+	zdobadzTransport();
 	usleep(150000);
 	leavePark();
 }
@@ -364,6 +365,16 @@ void poluj() {
 	println("Po polowaniu jest %d zwierzat", current_animals);
 }
 
+void zdobadzTransport() {
+	//Wyslij RequestTransport
+	//Czekaj az kolejka_transportu.size() == max_licences || size - 1 (bo technik nie bedzie chcial transportu, lub size gdy nie ma technika) ||
+	// || maksymalna ilosci tych, ktorzy chca polowac czyli ilosc komorek w tablicy kto chce polowac > 0)
+	//Gdy dostalem transport, czyli moja pozycja w tej kolejce z uwzglednieniem maksymalnej ilosci transportow pozwala mi na transport
+	//Wtedy wychodze z parku i wysylam release.
+	
+	//TODO: Dodać w requestRelease usuwanie pozycji z kolejki_transportu
+	//TODO: Dodać w techniku sprawdzanie czy nie ma nikogo w parku na podstawie kolejki_transportow == 0 oraz current_animals = 0
+}
 void leavePark() {
 	packet_t pakiet;
 	pakiet.rank = rank;
