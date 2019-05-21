@@ -21,6 +21,7 @@ void addToTransportQueue(std::vector <element_kolejki> &kolejka, packet_t *pakie
 	nowy_element.czy_zsumowano = false;
 	nowy_element.to_hunt = pakiet->to_hunt;
 	kolejka.push_back(nowy_element);
+	transportQueueChanged(kolejka);
 }
 
 void sortQueue(std::vector <element_kolejki> &kolejka) {

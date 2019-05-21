@@ -26,7 +26,7 @@ int max_animals = 10;
 int current_animals = max_animals;
 
 /* Ile chce upolowac */
-int to_hunt = 30;
+int to_hunt = 9;
 
 /* Ilość uzyskanych zgód */
 int answers = 0;
@@ -59,7 +59,7 @@ std::vector <element_kolejki> kolejka_transportu;
 int answersTransport = 0;
 
 /* Maksymalna ilość transportów */
-int max_transports = 1;
+int max_transports = 2;
 
 /* Ile razy technik wchodzil do parku */
 int wejsciaTechnika = 0;
@@ -91,6 +91,10 @@ void mainLoop(void)
 	
     if(rank == TECHNIK && wlaczonyTechnik) {
 		to_hunt = 0;
+    }
+    
+    if(rank == 2) {
+    	to_hunt+=5;
     }
     
 	tablicaIleChcaUpolowac[rank] = to_hunt;
@@ -220,6 +224,8 @@ void handleRelease(packet_t *pakiet, int numer_statusu)
 {
 	deleteFromQueue(kolejka_licencji, pakiet->rank);
 	deleteFromQueue(kolejka_transportu, pakiet->rank);
+	transportQueueChanged(kolejka_transportu);
+	
 	addToQueue(kolejka_licencji, pakiet, numer_statusu);
 	
 	//Odejmowanie przy niepełnej kolejce
@@ -306,6 +312,10 @@ bool sprawdzCzyKtosChcePolowac() {
 }
 
 void tryToEnterPark() {
+	if(jestem_w_parku) {
+		println("Jestem jeszcze w parku");
+		return;
+	}
 	println("Próbuję wejść do parku");
 	
 	przeliczLiczbeZwierzat();
@@ -412,11 +422,13 @@ void sprobujWyjscZParku() {
 	int ileMysliwych = ileProcesowChcePolowac();
 	if((int)kolejka_transportu.size() == max_transports ||
 			(int)kolejka_transportu.size() == size - 1 ||
-			(int)kolejka_transportu.size() == ileMysliwych) {
+			(int)kolejka_transportu.size() == ileMysliwych ||
+			ileMysliwych == 0) {
 		for(int i = 0; i < max_transports; i++) {
 			if(kolejka_transportu[i].numer_procesu == rank) {
 				println("Uzyskalem transport, wychodze z parku");
 				leavePark();
+				return;
 			}
 		}
 		println("Brak wolnych transportów");
@@ -445,6 +457,8 @@ void leavePark() {
 	
 	deleteFromQueue(kolejka_licencji, rank);
 	deleteFromQueue(kolejka_transportu, rank);
+	transportQueueChanged(kolejka_transportu);
+	
 	addToQueue(kolejka_licencji, &pakiet, RELEASE);
 	sendToAllProcesses(&pakiet, RELEASE);
 
