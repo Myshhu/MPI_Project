@@ -97,6 +97,8 @@ std::string returnTypeString(int type) {
             return "ANSWER";
         case 4:
             return "RELEASE";
+        case 5: 
+            return "ENTERINFO";
         default:
             return "ERROR";
     }

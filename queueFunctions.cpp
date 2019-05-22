@@ -11,6 +11,15 @@ void addToQueue(std::vector <element_kolejki> &kolejka, packet_t *pakiet, int nu
 	queueChanged(kolejka);
 }
 
+void addToTransportQueue(std::vector <element_kolejki> &kolejka, packet_t *pakiet, int numer_statusu) {
+	element_kolejki nowy_element;
+	nowy_element.numer_procesu = pakiet->rank;
+	nowy_element.zegar_procesu = pakiet->ts;
+	nowy_element.typ_komunikatu = numer_statusu;
+	kolejka.push_back(nowy_element);
+	transportQueueChanged(kolejka);
+}
+
 void sortQueue(std::vector <element_kolejki> &kolejka) {
 	std::sort(kolejka.begin(), kolejka.end(), normal_sort());
 	std::sort(kolejka.begin(), kolejka.end(), type_sort());
@@ -21,6 +30,12 @@ void queueChanged(std::vector <element_kolejki> &kolejka) {
 	printQueue(kolejka);
 	if(chce_do_parku) {
 		tryToEnterPark();
+	}
+}
+
+void transportQueueChanged(std::vector <element_kolejki> &kolejka) {
+	if(chce_wyjsc_z_parku) {
+		tryToLeavePark();
 	}
 }
 

@@ -17,10 +17,11 @@ pthread_t threadDelay;
 pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 
 /* Maksymalna lość licencji */
-int max_licences = 3;
+int max_licences = 2;
 
 /* Ilość uzyskanych zgód */
 int answers = 0;
+int answersTransport = 0;
 
 /* suma zbierana przez monitor */
 int sum = 0;
@@ -34,8 +35,14 @@ int global_ts_at_REQUEST = -1;
 /* czy chce wejsc do parku */
 bool chce_do_parku = true;
 
+/* czy chce wyjsc z parku */
+bool chce_wyjsc_z_parku = true;
+
 /* kolejka_licencji */
 std::vector <element_kolejki> kolejka_licencji;
+
+/* kolejka_transportu */
+std::vector <element_kolejki> kolejka_transportu;
 
 /* end == TRUE oznacza wyjście z main_loop */
 volatile char end = FALSE;
@@ -62,6 +69,14 @@ void mainLoop(void)
     pakiet.ts = global_ts;
     global_ts_at_REQUEST = global_ts;
 	sendToAllProces(&pakiet, REQUEST);
+}
+
+void wyslijInformacjeOWejsciu() {
+	packet_t pakiet;
+    pakiet.rank = rank;
+    pakiet.ts = global_ts;
+    global_ts_at_REQUEST = global_ts;
+	sendToAllProces(&pakiet, ENTERINFO);
 }
 
 int max(int a, int b) {
@@ -104,6 +119,9 @@ void *comFunc(void *ptr)
         		case RELEASE:
         			handleRelease(&pakiet, (int)status.MPI_TAG);
         			break;
+				case ENTERINFO:
+					handleEnterInfo(&pakiet, (int)status.MPI_TAG);
+					break;
         		default:
         			println("Function calling error");
         			break;
@@ -140,6 +158,56 @@ void handleRequest(packet_t *pakiet, int numer_statusu)
     sendPacket(&tmp, pakiet->rank, ANSWER); //-1, bo dla RELEASE ostatni argument nie jest uzywany
 }
 
+void handleAnswer(packet_t *pakiet, int numer_statusu)
+{
+	answers++;
+	if(answers == size - 1) {
+		println("Uzyskalem odpowiedzi od wszystkich, dodaje siebie do kolejki");
+		packet_t tmppacket;
+		tmppacket.rank = rank;
+		tmppacket.ts = global_ts_at_REQUEST;
+	  	addToQueue(kolejka_licencji, &tmppacket, REQUEST);
+	  	answers = 0;
+	}
+}
+/**********/
+
+void handleReleaseTransport(packet_t *pakiet, int numer_statusu)
+{
+	deleteFromQueue(kolejka_transportu, pakiet->rank);
+	addToTransportQueue(kolejka_transportu, pakiet, numer_statusu);
+	//queueChanged("Release");
+}
+
+void handleRequestTransport(packet_t *pakiet, int numer_statusu)
+{
+    packet_t tmp;
+    tmp.rank = rank;
+	deleteFromQueue(kolejka_transportu, pakiet->rank);
+    addToTransportQueue(kolejka_transportu, pakiet, numer_statusu);
+    //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
+    sendPacket(&tmp, pakiet->rank, ANSWERTRANSPORT); //-1, bo dla RELEASE ostatni argument nie jest uzywany
+}
+
+void handleAnswerTransport(packet_t *pakiet, int numer_statusu)
+{
+	answersTransport++;
+	if(answersTransport == size - 1) {
+		println("Uzyskalem odpowiedzi od wszystkich, dodaje siebie do kolejki");
+		packet_t tmppacket;
+		tmppacket.rank = rank;
+		tmppacket.ts = global_ts_at_REQUEST;
+	  	addToTransportQueue(kolejka_transportu, &tmppacket, REQUESTTRANSPORT);
+	  	answersTransport = 0;
+	}
+}
+
+/**************/
+
+void handleEnterInfo(packet_t *pakiet, int numer_statusu) {
+
+}
+
 void tryToEnterPark() {
 	// println("Próbuję wejść do parku");
 	if((int)kolejka_licencji.size() == size) {
@@ -158,7 +226,8 @@ void tryToEnterPark() {
 void enterPark() {
 	chce_do_parku = false;
 	println("Uzyskałem licencję, wszedłem do parku");
-	usleep(1500000);
+	wyslijInformacjeOWejsciu();
+	usleep(5000000);
 	leavePark();
 }
 
@@ -173,15 +242,4 @@ void leavePark() {
 	addToQueue(kolejka_licencji, &pakiet, RELEASE);
 }
 
-void handleAnswer(packet_t *pakiet, int numer_statusu)
-{
-	answers++;
-	if(answers == size - 1) {
-		println("Uzyskalem odpowiedzi od wszystkich, dodaje siebie do kolejki");
-		packet_t tmppacket;
-		tmppacket.rank = rank;
-		tmppacket.ts = global_ts_at_REQUEST;
-	  	addToQueue(kolejka_licencji, &tmppacket, REQUEST);
-	  	answers = 0;
-	}
-}
+
