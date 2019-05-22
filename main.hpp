@@ -84,11 +84,16 @@ void handleAnswer(packet_t *pakiet, int numer_statusu);
 void handleRelease(packet_t *pakiet, int numer_statusu);
 void handleEnterInfo(packet_t *pakiet, int numer_statusu);
 /**************************/
+void handleRequestTransport(packet_t *pakiet, int numer_statusu);
+void handleAnswerTransport(packet_t *pakiet, int numer_statusu);
+void handleReleaseTransport(packet_t *pakiet, int numer_statusu);
+/**************************/
 
 void mainLoop(void);
 void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts);
 int max(int a, int b);
 void tryToEnterPark();
+void tryToLeavePark();
 void enterPark();
 void leavePark();
 

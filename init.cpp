@@ -99,6 +99,12 @@ std::string returnTypeString(int type) {
             return "RELEASE";
         case 5: 
             return "ENTERINFO";
+		case 6:
+			return "REQUESTTRANSPORT";
+		case 7:
+			return "ANSWERTRANSPORT";
+		case 8:
+			return "RELEASETRANSPORT";
         default:
             return "ERROR";
     }
