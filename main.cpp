@@ -16,7 +16,7 @@ pthread_t threadDelay;
 //GQueue *delayStack;
 pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 
-/* Maksymalna lość licencji */
+/* Maksymalna ilość licencji */
 int max_licences = 5;
 int max_transports = 2;
 
@@ -155,7 +155,6 @@ void *comFunc(void *ptr)
 /* Handlery */
 void handleRelease(packet_t *pakiet, int numer_statusu)
 {
-	deleteFromQueue(kolejka_licencji, pakiet->rank);
 	addToQueue(kolejka_licencji, pakiet, numer_statusu);
 	//queueChanged("Release");
 }
@@ -171,7 +170,6 @@ void handleRequest(packet_t *pakiet, int numer_statusu)
 {
     packet_t tmp;
     tmp.rank = rank;
-	deleteFromQueue(kolejka_licencji, pakiet->rank);
     addToQueue(kolejka_licencji, pakiet, numer_statusu);
     //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
     sendPacket(&tmp, pakiet->rank, ANSWER); //-1, bo dla RELEASE ostatni argument nie jest uzywany
@@ -193,7 +191,6 @@ void handleAnswer(packet_t *pakiet, int numer_statusu)
 
 void handleReleaseTransport(packet_t *pakiet, int numer_statusu)
 {
-	deleteFromQueue(kolejka_transportu, pakiet->rank);
 	addToTransportQueue(kolejka_transportu, pakiet, numer_statusu);
 	//queueChanged("Release");
 }
@@ -202,7 +199,6 @@ void handleRequestTransport(packet_t *pakiet, int numer_statusu)
 {
     packet_t tmp;
     tmp.rank = rank;
-	deleteFromQueue(kolejka_transportu, pakiet->rank);
     addToTransportQueue(kolejka_transportu, pakiet, numer_statusu);
     //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
     sendPacket(&tmp, pakiet->rank, ANSWERTRANSPORT); //-1, bo dla RELEASE ostatni argument nie jest uzywany
