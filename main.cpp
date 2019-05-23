@@ -17,7 +17,8 @@ pthread_mutex_t packetMut = PTHREAD_MUTEX_INITIALIZER;
 int konto = STARTING_MONEY;
 
 /* Maksymalna lość licencji */
-int max_licences = 1;
+int max_licences = 2;
+int max_transports = 1;
 
 /* Maksymalna liczba zajęcy w parku */
 int max_animals = 9;
@@ -30,6 +31,7 @@ int to_hunt = 3;
 
 /* Ilość uzyskanych zgód */
 int answers = 0;
+int answersTransport = 0;
 
 /* suma zbierana przez monitor */
 int sum = 0;
@@ -43,11 +45,17 @@ int global_ts_at_REQUEST = -1;
 /* czy chce wejsc do parku */
 bool chce_do_parku = true;
 
+/* czy chce wyjsc z parku */
+bool chce_wyjsc_z_parku = false;
+
 bool are_animals_alive = true;
 int* tablicaIleChcaUpolowac = NULL;
 
 /* kolejka_licencji */
 std::vector <element_kolejki> kolejka_licencji;
+
+/* kolejka_transportu */
+std::vector <element_kolejki> kolejka_transportu;
 
 /* end == TRUE oznacza wyjście z main_loop */
 volatile char end = FALSE;
@@ -81,6 +89,7 @@ void mainLoop(void)
     global_ts_at_REQUEST = global_ts;
     
 	sendToAllProcesses(&pakiet, REQUEST);
+	sendToAllProcesses(&pakiet, RELEASETRANSPORT);
 }
 
 void sendRequest() {
@@ -90,6 +99,22 @@ void sendRequest() {
 	pakiet.to_hunt = to_hunt;
     global_ts_at_REQUEST = global_ts;
 	sendToAllProcesses(&pakiet, REQUEST);
+}
+
+void wyslijInformacjeOWejsciu() {
+	packet_t pakiet;
+    pakiet.rank = rank;
+    pakiet.ts = global_ts;
+    global_ts_at_REQUEST = global_ts;
+	sendToAllProcesses(&pakiet, ENTERINFO);
+}
+
+void sendRequestTransport() {
+	packet_t pakiet;
+    pakiet.rank = rank;
+    pakiet.ts = global_ts;
+    global_ts_at_REQUEST = global_ts;
+	sendToAllProcesses(&pakiet, REQUESTTRANSPORT);
 }
 
 /* Wątek komunikacyjny - dla każdej otrzymanej wiadomości wywołuje jej handler */
@@ -104,7 +129,7 @@ void *comFunc(void *ptr)
         pakiet.src = status.MPI_SOURCE;
 
 	    pthread_mutex_lock(&konto_mut);
-        println("Dostałem pakiet %s od procesu %d, zmieniam globalny zegar z %d na %d", returnTypeString((int)status.MPI_TAG).c_str(), pakiet.rank, global_ts, max(global_ts, pakiet.ts) + 1);
+        //println("Dostałem pakiet %s od procesu %d, zmieniam globalny zegar z %d na %d", returnTypeString((int)status.MPI_TAG).c_str(), pakiet.rank, global_ts, max(global_ts, pakiet.ts) + 1);
         
         global_ts = max(global_ts, pakiet.ts) + 1;
 	    pthread_mutex_unlock(&konto_mut);
@@ -124,6 +149,18 @@ void *comFunc(void *ptr)
         		case RELEASE:
         			handleRelease(&pakiet, (int)status.MPI_TAG);
         			break;
+				case ENTERINFO:
+					handleEnterInfo(&pakiet, (int)status.MPI_TAG);
+					break;
+				case REQUESTTRANSPORT:
+					handleRequestTransport(&pakiet, (int)status.MPI_TAG);
+					break;
+				case ANSWERTRANSPORT:
+					handleAnswerTransport(&pakiet, (int)status.MPI_TAG);
+					break;
+				case RELEASETRANSPORT:
+					handleReleaseTransport(&pakiet, (int)status.MPI_TAG);
+					break;
         		default:
         			println("Function calling error");
         			break;
@@ -138,7 +175,6 @@ void *comFunc(void *ptr)
 /* Handlery */
 void handleRelease(packet_t *pakiet, int numer_statusu)
 {
-	deleteFromQueue(kolejka_licencji, pakiet->rank);
 	addToQueue(kolejka_licencji, pakiet, numer_statusu);
 	
 	//Odejmowanie przy niepełnej kolejce
@@ -165,7 +201,6 @@ void finishHandler(packet_t *pakiet, int numer_statusu)
 
 void handleRequest(packet_t *pakiet, int numer_statusu)
 {   
-	deleteFromQueue(kolejka_licencji, pakiet->rank);
     addToQueue(kolejka_licencji, pakiet, numer_statusu);
 	
 	//Zaktualizuj tablicę początkową
@@ -181,7 +216,7 @@ void handleAnswer(packet_t *pakiet, int numer_statusu)
 {
 	answers++;
 	if(answers == size - 1) {
-		println("Uzyskalem odpowiedzi od wszystkich, dodaje siebie do kolejki");
+		//println("Uzyskalem odpowiedzi od wszystkich, dodaje siebie do kolejki");
 		packet_t tmppacket;
 		tmppacket.rank = rank;
 		tmppacket.ts = global_ts_at_REQUEST;
@@ -190,14 +225,47 @@ void handleAnswer(packet_t *pakiet, int numer_statusu)
 	  	answers = 0;
 	}
 }
-/* Koniec handlerów */
+/**********/
+
+void handleReleaseTransport(packet_t *pakiet, int numer_statusu)
+{
+	addToTransportQueue(kolejka_transportu, pakiet, numer_statusu);
+	//queueChanged("Release");
+}
+
+void handleRequestTransport(packet_t *pakiet, int numer_statusu)
+{
+    packet_t tmp;
+    tmp.rank = rank;
+    addToTransportQueue(kolejka_transportu, pakiet, numer_statusu);
+    //println("Dostałem REQUEST od procesu %d, jego czas to %d, odsyłam ANSWER, tmp.rank = %d\n", pakiet->rank, pakiet->ts, tmp.rank);
+    sendPacket(&tmp, pakiet->rank, ANSWERTRANSPORT); //-1, bo dla RELEASE ostatni argument nie jest uzywany
+}
+
+void handleAnswerTransport(packet_t *pakiet, int numer_statusu)
+{
+	answersTransport++;
+	if(answersTransport == size - 1) {
+		//println("Uzyskalem odpowiedzi do transportu od wszystkich, dodaje siebie do kolejki transportu");
+		packet_t tmppacket;
+		tmppacket.rank = rank;
+		tmppacket.ts = global_ts_at_REQUEST;
+	  	addToTransportQueue(kolejka_transportu, &tmppacket, REQUESTTRANSPORT);
+	  	answersTransport = 0;
+	}
+}
+
+void handleEnterInfo(packet_t *pakiet, int numer_statusu) {
+
+}
+/**************/
 
 void wypiszTabliceIleChcaUpolowac() {
 	std::string res = "";
 	for(int i = 0; i < size; i++) {
 		res = res + " " + std::to_string(tablicaIleChcaUpolowac[i]);
 	}
-	println("Tablica z wartościami ile chcą upolować to: %s", res.c_str());
+	//println("Tablica z wartościami ile chcą upolować to: %s", res.c_str());
 }
 
 void tryToEnterPark() {
@@ -216,15 +284,15 @@ void tryToEnterPark() {
 				return;
 			}
 		}
-		println("Nieudało się, park zajęty");
+		//println("Nieudało się, park zajęty");
 	} else {
-		println("Nieudało się, bo kolejka_licencji.size(): %d != size: %d", (int)kolejka_licencji.size(), size);
+		//println("Nieudało się, bo kolejka_licencji.size(): %d != size: %d", (int)kolejka_licencji.size(), size);
 	}
 }
 
 //Funkcja aktualizująca ilość zajęcy, wywoływana przy próbie wejścia do parku
 void przeliczLiczbeZwierzat() {
-	println("Przeliczam liczbe zwierzat");
+	//println("Przeliczam liczbe zwierzat");
 	
     for(unsigned int i = 0; i < kolejka_licencji.size(); i++) {
 		if((kolejka_licencji[i].numer_procesu == rank) || (int)kolejka_licencji.size() != size)  {
@@ -235,7 +303,7 @@ void przeliczLiczbeZwierzat() {
 			{
 				current_animals = current_animals - kolejka_licencji[i].to_hunt;
 				kolejka_licencji[i].czy_zsumowano = true;
-				println("Odejmuje tyle zwierzat: %d, wartosc biore z procesu %d", kolejka_licencji[i].to_hunt, i);
+				//println("Odejmuje tyle zwierzat: %d, wartosc biore z procesu %d", kolejka_licencji[i].to_hunt, i);
 				if(current_animals <= 0) {
 					current_animals = 0;
 					are_animals_alive = false;
@@ -252,12 +320,30 @@ void enterPark() {
 	if(to_hunt > 0) {
 		chce_do_parku = true;
 	}
-	usleep(150000);
-	leavePark();
+	chce_wyjsc_z_parku = true;
+	//usleep(150000);
+	//leavePark();
+	sendRequestTransport();
+}
+
+void tryToLeavePark() {
+	//println("Probuje wyjsc z parku");
+	if((int)kolejka_transportu.size() == size) {
+		for(int i = 0; i < max_transports; i++) {
+			if(kolejka_transportu[i].numer_procesu == rank) {
+				leavePark();
+				println("Uzyskałem transport, wyszedlem z parku");
+				return;
+			}
+		}
+		//println("Nieudało się, transporty zajete");
+	} else {
+		//println("Nieudało się, bo kolejka_transportu.size(): %d != size: %d", (int)kolejka_transportu.size(), size);
+	}
 }
 
 void poluj() {
-	println("Poluje, jest %d zwierzat", current_animals);
+	//println("Poluje, jest %d zwierzat", current_animals);
 	if(current_animals > to_hunt) {
 		current_animals -= to_hunt;
 		to_hunt = 0;
@@ -269,7 +355,7 @@ void poluj() {
 		current_animals = 0;
 	}
 	tablicaIleChcaUpolowac[rank] = to_hunt;
-	println("Po polowaniu jest %d zwierzat", current_animals);
+	//println("Po polowaniu jest %d zwierzat", current_animals);
 }
 
 void leavePark() {
@@ -277,10 +363,13 @@ void leavePark() {
 	pakiet.rank = rank;
 	pakiet.ts = global_ts;
 	pakiet.to_hunt = to_hunt;
-	println("Wychodzę z parku, po wyjsciu chce upolowac %d, wysyłam RELEASE", to_hunt);
-	deleteFromQueue(kolejka_licencji, rank);
-	addToQueue(kolejka_licencji, &pakiet, RELEASE);
+	//println("Wychodzę z parku, po wyjsciu chce upolowac %d, wysyłam RELEASE", to_hunt);
+	chce_wyjsc_z_parku = false;
 	sendToAllProcesses(&pakiet, RELEASE);
+	sendToAllProcesses(&pakiet, RELEASETRANSPORT);
+	
+	addToQueue(kolejka_licencji, &pakiet, RELEASE);
+	addToTransportQueue(kolejka_transportu, &pakiet, RELEASETRANSPORT);
 
 	if(chce_do_parku == true) {
 		//Usuwamy swój pakiet release ze swojej kolejki i zaczynamy całą procedurę uzyskania licencji od nowa

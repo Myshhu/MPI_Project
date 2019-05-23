@@ -98,6 +98,14 @@ std::string returnTypeString(int type) {
             return "ANSWER";
         case 4:
             return "RELEASE";
+        case 5: 
+            return "ENTERINFO";
+		case 6:
+			return "REQUESTTRANSPORT";
+		case 7:
+			return "ANSWERTRANSPORT";
+		case 8:
+			return "RELEASETRANSPORT";
         default:
             return "ERROR";
     }
@@ -108,7 +116,7 @@ void sendPacket(packet_t *data, int dst, int type)
     data->ts = global_ts; 
     data->rank = rank;
     global_ts++;
-    println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), dst, global_ts - 1, global_ts);
+    //println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), dst, global_ts - 1, global_ts);
     MPI_Send(data, 1, MPI_PAKIET_T, dst, type, MPI_COMM_WORLD);
 }
 
@@ -119,7 +127,7 @@ void sendToAllProcesses(packet_t *data, int type)
     global_ts++;
     for(int i = 0; i < size; i++){
         if(i != rank){
-            println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), i, global_ts - 1, global_ts);
+            //println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), i, global_ts - 1, global_ts);
             MPI_Send(data, 1, MPI_PAKIET_T, i, type, MPI_COMM_WORLD);
         }
     }
