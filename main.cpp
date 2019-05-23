@@ -269,7 +269,7 @@ void wypiszTabliceIleChcaUpolowac() {
 }
 
 void tryToEnterPark() {
-	println("Próbuję wejść do parku");
+	//println("Próbuję wejść do parku");
 	
 	przeliczLiczbeZwierzat();
 	
@@ -279,14 +279,14 @@ void tryToEnterPark() {
 				if(are_animals_alive) {
 					enterPark();
 				} else {
-					println("Nieudało się, bo nie starczyło zwierząt");
+					println("Nie udało się, bo nie starczyło zwierząt");
 				}
 				return;
 			}
 		}
-		//println("Nieudało się, park zajęty");
+		println("Nie udało się, nie należy mi się licencja");
 	} else {
-		//println("Nieudało się, bo kolejka_licencji.size(): %d != size: %d", (int)kolejka_licencji.size(), size);
+		//println("Nie udało się, bo kolejka_licencji.size(): %d != size: %d", (int)kolejka_licencji.size(), size);
 	}
 }
 
@@ -331,14 +331,14 @@ void tryToLeavePark() {
 	if((int)kolejka_transportu.size() == size) {
 		for(int i = 0; i < max_transports; i++) {
 			if(kolejka_transportu[i].numer_procesu == rank) {
-				leavePark();
 				println("Uzyskałem transport, wyszedlem z parku");
+				leavePark();
 				return;
 			}
 		}
-		//println("Nieudało się, transporty zajete");
+		//println("Nie udało się, transporty zajete");
 	} else {
-		//println("Nieudało się, bo kolejka_transportu.size(): %d != size: %d", (int)kolejka_transportu.size(), size);
+		//println("Nie udało się, bo kolejka_transportu.size(): %d != size: %d", (int)kolejka_transportu.size(), size);
 	}
 }
 
