@@ -48,8 +48,8 @@ void inicjuj(int *argc, char ***argv)
     */
     /* sklejone z stackoverflow */
     const int nitems = FIELDNO; // Struktura ma FIELDNO elementów - przy dodaniu pola zwiększ FIELDNO w main.h !
-    int blocklengths[FIELDNO] = {1,1,1,1,1}; /* tu zwiększyć na [4] = {1,1,1,1} gdy dodamy nowe pole */
-    MPI_Datatype typy[FIELDNO] = {MPI_INT, MPI_INT,MPI_INT,MPI_INT, MPI_INT}; /* tu dodać typ nowego pola (np MPI_BYTE, MPI_INT) */
+    int blocklengths[FIELDNO] = {1,1,1,1,1,1}; /* tu zwiększyć na [4] = {1,1,1,1} gdy dodamy nowe pole */
+    MPI_Datatype typy[FIELDNO] = {MPI_INT, MPI_INT,MPI_INT,MPI_INT, MPI_INT, MPI_INT}; /* tu dodać typ nowego pola (np MPI_BYTE, MPI_INT) */
     MPI_Aint offsets[FIELDNO];
 
     offsets[0] = offsetof(packet_t, ts);
@@ -57,6 +57,7 @@ void inicjuj(int *argc, char ***argv)
     offsets[2] = offsetof(packet_t, dst);
     offsets[3] = offsetof(packet_t, src);
     offsets[4] = offsetof(packet_t, to_hunt);
+offsets[5] = offsetof(packet_t, upolowano);
     /* tutaj dodać offset nowego pola (offsets[2] = ... */
 
     MPI_Type_create_struct(nitems, blocklengths, offsets, typy, &MPI_PAKIET_T);
@@ -106,6 +107,8 @@ std::string returnTypeString(int type) {
 			return "ANSWERTRANSPORT";
 		case 8:
 			return "RELEASETRANSPORT";
+		case 0:
+			return "RESP";
         default:
             return "ERROR";
     }

@@ -15,8 +15,9 @@ const int ROOT = 0;
 #define REQUESTTRANSPORT 6
 #define ANSWERTRANSPORT 7
 #define RELEASETRANSPORT 8
+#define RESP 9
 /* MAX_HANDLERS musi się równać wartości ostatniego typu pakietu + 1 */
-#define MAX_HANDLERS 9 
+#define MAX_HANDLERS 10
 
 #define STARTING_MONEY 1000
 
@@ -31,7 +32,7 @@ const int ROOT = 0;
 #include <string>
 
 /* FIELDNO: liczba pól w strukturze packet_t */
-#define FIELDNO 5
+#define FIELDNO 6
 typedef struct {
     int ts; /* zegar lamporta */
     int rank; 
@@ -39,6 +40,7 @@ typedef struct {
     int dst; /* pole ustawiane w sendPacket */
     int src; /* pole ustawiane w wątku komunikacyjnym na rank nadawcy */
 	int to_hunt;
+	int upolowano;
     /* przy dodaniu nowych pól zwiększy FIELDNO i zmodyfikuj 
        plik init.c od linijki 76
     */
@@ -91,6 +93,7 @@ void handleRequestTransport(packet_t *pakiet, int numer_statusu);
 void handleAnswerTransport(packet_t *pakiet, int numer_statusu);
 void handleReleaseTransport(packet_t *pakiet, int numer_statusu);
 /**************************/
+void handleReleaseResp();
 
 void mainLoop(void);
 void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts);

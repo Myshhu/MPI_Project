@@ -21,13 +21,19 @@ int max_licences = 2;
 int max_transports = 1;
 
 /* Maksymalna liczba zajęcy w parku */
-int max_animals = 9;
+int max_animals = 10;
+
+/*pomocna zmienna dla technika mistrza zajacow ktory dorabia je w mig*/
+int howMuchAnimalsWasDied = max_animals;
 
 /* Aktualna liczba zajęcy w parku */
 int current_animals = max_animals;
 
 /* Ile chce upolowac */
 int to_hunt = 3;
+
+/*ile upolowalem*/
+int upolowano = 0;
 
 /* Ilość uzyskanych zgód */
 int answers = 0;
@@ -74,6 +80,13 @@ int main(int argc, char **argv)
 /* Wątek główny */
 void mainLoop(void)
 {
+	to_hunt = 5;//rand() % 20 + 1;
+	if(rank == 0) {
+		to_hunt = 0;
+		chce_do_parku = false;
+	}
+	
+
 	tablicaIleChcaUpolowac = new int[size];  // Allocate n ints and save ptr in a.
 	for (int i=0; i<size; i++) {
 		tablicaIleChcaUpolowac[i] = 0;    // Initialize all elements to zero.
@@ -88,7 +101,10 @@ void mainLoop(void)
 	pakiet.to_hunt = to_hunt;
     global_ts_at_REQUEST = global_ts;
     
-	sendToAllProcesses(&pakiet, REQUEST);
+	if(rank != 0) {
+		sendToAllProcesses(&pakiet, REQUEST);
+	}else{
+		sendToAllProcesses(&pakiet, RELEASE);}
 	sendToAllProcesses(&pakiet, RELEASETRANSPORT);
 }
 
@@ -161,6 +177,9 @@ void *comFunc(void *ptr)
 				case RELEASETRANSPORT:
 					handleReleaseTransport(&pakiet, (int)status.MPI_TAG);
 					break;
+				case RESP:
+					handleReleaseResp();
+					break;
         		default:
         			println("Function calling error");
         			break;
@@ -173,13 +192,48 @@ void *comFunc(void *ptr)
 }
 
 /* Handlery */
+
+void handleReleaseResp(){
+	println("ktos zrespil zajace");
+	current_animals = max_animals;
+	przeliczLiczbeZwierzat();
+are_animals_alive = true;;
+}
+
 void handleRelease(packet_t *pakiet, int numer_statusu)
 {
+	if(rank == 0) {
+		//println("%d, %d", howMuchAnimalsWasDied, pakiet->upolowano);
+		howMuchAnimalsWasDied -= pakiet->upolowano;
+		int ilepoza = 1;
+		if(howMuchAnimalsWasDied == 0){
+			//println("Jestem technikiem i widze ze brakuje zwierzyny");
+			for(int i = 1; i < (int)kolejka_transportu.size(); i++){
+				if(kolejka_transportu[i].typ_komunikatu == 8){
+					ilepoza += 1;
+				}
+			}
+			if(ilepoza == (int)kolejka_transportu.size()){
+				println("Jestem zarabistym technikiem wbijam do pustego parku i naprawiam zajace, teraz ich bedzie %d", max_animals);
+				current_animals = max_animals;
+				howMuchAnimalsWasDied = max_animals;
+				packet_t pakietp;
+   				 pakietp.rank = rank;
+   				 pakietp.ts = global_ts;
+					pakietp.to_hunt = 0;
+    				global_ts_at_REQUEST = global_ts;
+				sendToAllProcesses(&pakietp, RESP);
+				sendToAllProcesses(&pakietp, RELEASE);
+			}	
+		}
+		
+
+	}
 	addToQueue(kolejka_licencji, pakiet, numer_statusu);
 	
 	//Odejmowanie przy niepełnej kolejce
 	if((int)kolejka_licencji.size() != size) {
-		println("-------------> Odejmowanie przy niepełnej kolejce <-------------");
+		//println("-------------> Odejmowanie przy niepełnej kolejce <-------------");
 		int do_odjecia = tablicaIleChcaUpolowac[pakiet->rank] - pakiet->to_hunt;
 		//Zaktualizuj tablicę początkową
 		current_animals -= do_odjecia;
@@ -284,7 +338,7 @@ void tryToEnterPark() {
 				return;
 			}
 		}
-		println("Nie udało się, nie należy mi się licencja");
+		//println("Nie udało się, nie należy mi się licencja");
 	} else {
 		//println("Nie udało się, bo kolejka_licencji.size(): %d != size: %d", (int)kolejka_licencji.size(), size);
 	}
@@ -343,7 +397,8 @@ void tryToLeavePark() {
 }
 
 void poluj() {
-	//println("Poluje, jest %d zwierzat", current_animals);
+	println("Poluje, jest %d zwierzat, chce upolować %d zwierzat", current_animals, to_hunt);
+	upolowano = to_hunt;
 	if(current_animals > to_hunt) {
 		current_animals -= to_hunt;
 		to_hunt = 0;
@@ -354,6 +409,7 @@ void poluj() {
 		to_hunt -= current_animals;
 		current_animals = 0;
 	}
+	upolowano -= to_hunt;
 	tablicaIleChcaUpolowac[rank] = to_hunt;
 	//println("Po polowaniu jest %d zwierzat", current_animals);
 }
@@ -363,6 +419,8 @@ void leavePark() {
 	pakiet.rank = rank;
 	pakiet.ts = global_ts;
 	pakiet.to_hunt = to_hunt;
+	pakiet.upolowano = upolowano;
+	println("upolowalem %d", upolowano);
 	//println("Wychodzę z parku, po wyjsciu chce upolowac %d, wysyłam RELEASE", to_hunt);
 	chce_wyjsc_z_parku = false;
 	sendToAllProcesses(&pakiet, RELEASE);
