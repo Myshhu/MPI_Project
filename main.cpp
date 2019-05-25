@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 /* Wątek główny */
 void mainLoop(void)
 {
-	to_hunt = 5;//rand() % 20 + 1;
+	to_hunt = rand() % 20 + 1;
 	if(rank == 0) {
 		to_hunt = 0;
 		chce_do_parku = false;
@@ -194,10 +194,11 @@ void *comFunc(void *ptr)
 /* Handlery */
 
 void handleReleaseResp(){
-	println("ktos zrespil zajace");
+	for(int i = 0; i < (int)kolejka_licencji.size(); i++){
+		kolejka_licencji[i].czy_zsumowano = false;
+	}
+	//println("ktos zrespil zajace");
 	current_animals = max_animals;
-	przeliczLiczbeZwierzat();
-are_animals_alive = true;;
 }
 
 void handleRelease(packet_t *pakiet, int numer_statusu)
@@ -354,17 +355,30 @@ void przeliczLiczbeZwierzat() {
 		} else {
 			//Patrzymy czy zsumowano, bo jeśli proces tylko przesunął się w górę kolejki, to nie chcemy tej ilości odejmować drugi raz
 			if(!(kolejka_licencji[i].czy_zsumowano))
-			{
-				current_animals = current_animals - kolejka_licencji[i].to_hunt;
+			{	
+				//println("proces %d chce upolowac %d", i, kolejka_licencji[i].to_hunt);
+				if(kolejka_licencji[i].to_hunt > current_animals){
+					kolejka_licencji[i].to_hunt -= current_animals;
+					current_animals = 0;
+				}else{
+					current_animals = current_animals - kolejka_licencji[i].to_hunt;
+					kolejka_licencji[i].to_hunt = 0;
+				}
+				//println("calculatored %d", current_animals);
 				kolejka_licencji[i].czy_zsumowano = true;
 				//println("Odejmuje tyle zwierzat: %d, wartosc biore z procesu %d", kolejka_licencji[i].to_hunt, i);
 				if(current_animals <= 0) {
 					current_animals = 0;
 					are_animals_alive = false;
+					return;
 				}
 			}
 		}
 	}
+	if(current_animals > 0){
+			//println("%d", current_animals);
+			are_animals_alive = true;
+		}
 }
 
 void enterPark() {
@@ -420,20 +434,25 @@ void leavePark() {
 	pakiet.ts = global_ts;
 	pakiet.to_hunt = to_hunt;
 	pakiet.upolowano = upolowano;
-	println("upolowalem %d", upolowano);
+	//println("upolowalem %d", upolowano);
 	//println("Wychodzę z parku, po wyjsciu chce upolowac %d, wysyłam RELEASE", to_hunt);
 	chce_wyjsc_z_parku = false;
-	sendToAllProcesses(&pakiet, RELEASE);
+
+	if(to_hunt == 0) {
+		sendToAllProcesses(&pakiet, RELEASE);
+		addToQueue(kolejka_licencji, &pakiet, RELEASE);
+	}else{
+		 MPI_Send(&pakiet, 1, MPI_PAKIET_T, 0, RELEASE, MPI_COMM_WORLD);
+	}
+
 	sendToAllProcesses(&pakiet, RELEASETRANSPORT);
-	
-	addToQueue(kolejka_licencji, &pakiet, RELEASE);
 	addToTransportQueue(kolejka_transportu, &pakiet, RELEASETRANSPORT);
 
-	if(chce_do_parku == true) {
+	/*if(chce_do_parku == true) {
 		//Usuwamy swój pakiet release ze swojej kolejki i zaczynamy całą procedurę uzyskania licencji od nowa
 		deleteFromQueue(kolejka_licencji, rank);
 		sendRequest();
-	}
+	}*/
 }
 
 int max(int a, int b) {
