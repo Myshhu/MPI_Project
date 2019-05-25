@@ -24,7 +24,7 @@ int max_transports = 1;
 int max_animals = 10;
 
 /*pomocna zmienna dla technika mistrza zajacow ktory dorabia je w mig*/
-int howMuchAnimalsWasDied = max_animals;
+int howMuchAnimalsAreAlive = max_animals;
 
 /* Aktualna liczba zajęcy w parku */
 int current_animals = max_animals;
@@ -204,10 +204,11 @@ void handleReleaseResp(){
 void handleRelease(packet_t *pakiet, int numer_statusu)
 {
 	if(rank == 0) {
-		//println("%d, %d", howMuchAnimalsWasDied, pakiet->upolowano);
-		howMuchAnimalsWasDied -= pakiet->upolowano;
+		//println("%d, %d", howMuchAnimalsAreAlive, pakiet->upolowano);
+		howMuchAnimalsAreAlive -= pakiet->upolowano;
+		//println("%d", howMuchAnimalsAreAlive);
 		int ilepoza = 1;
-		if(howMuchAnimalsWasDied == 0){
+		if(howMuchAnimalsAreAlive == 0){
 			//println("Jestem technikiem i widze ze brakuje zwierzyny");
 			for(int i = 1; i < (int)kolejka_transportu.size(); i++){
 				if(kolejka_transportu[i].typ_komunikatu == 8){
@@ -217,7 +218,7 @@ void handleRelease(packet_t *pakiet, int numer_statusu)
 			if(ilepoza == (int)kolejka_transportu.size()){
 				println("Jestem zarabistym technikiem wbijam do pustego parku i naprawiam zajace, teraz ich bedzie %d", max_animals);
 				current_animals = max_animals;
-				howMuchAnimalsWasDied = max_animals;
+				howMuchAnimalsAreAlive = max_animals;
 				packet_t pakietp;
    				 pakietp.rank = rank;
    				 pakietp.ts = global_ts;
@@ -334,7 +335,7 @@ void tryToEnterPark() {
 				if(are_animals_alive) {
 					enterPark();
 				} else {
-					println("Nie udało się, bo nie starczyło zwierząt");
+					//println("Nie udało się, bo nie starczyło zwierząt");
 				}
 				return;
 			}
@@ -375,10 +376,14 @@ void przeliczLiczbeZwierzat() {
 			}
 		}
 	}
+	//println("current %d", current_animals);
 	if(current_animals > 0){
 			//println("%d", current_animals);
 			are_animals_alive = true;
 		}
+	else{
+		are_animals_alive = false;
+	}
 }
 
 void enterPark() {
