@@ -48,8 +48,8 @@ void inicjuj(int *argc, char ***argv)
     */
     /* sklejone z stackoverflow */
     const int nitems = FIELDNO; // Struktura ma FIELDNO elementów - przy dodaniu pola zwiększ FIELDNO w main.h !
-    int blocklengths[FIELDNO] = {1,1,1,1,1}; /* tu zwiększyć na [4] = {1,1,1,1} gdy dodamy nowe pole */
-    MPI_Datatype typy[FIELDNO] = {MPI_INT, MPI_INT,MPI_INT,MPI_INT, MPI_INT}; /* tu dodać typ nowego pola (np MPI_BYTE, MPI_INT) */
+    int blocklengths[FIELDNO] = {1,1,1,1,1,1}; /* tu zwiększyć na [4] = {1,1,1,1} gdy dodamy nowe pole */
+    MPI_Datatype typy[FIELDNO] = {MPI_INT, MPI_INT,MPI_INT,MPI_INT, MPI_INT, MPI_INT}; /* tu dodać typ nowego pola (np MPI_BYTE, MPI_INT) */
     MPI_Aint offsets[FIELDNO];
 
     offsets[0] = offsetof(packet_t, ts);
@@ -57,6 +57,7 @@ void inicjuj(int *argc, char ***argv)
     offsets[2] = offsetof(packet_t, dst);
     offsets[3] = offsetof(packet_t, src);
     offsets[4] = offsetof(packet_t, to_hunt);
+offsets[5] = offsetof(packet_t, upolowano);
     /* tutaj dodać offset nowego pola (offsets[2] = ... */
 
     MPI_Type_create_struct(nitems, blocklengths, offsets, typy, &MPI_PAKIET_T);
@@ -98,6 +99,16 @@ std::string returnTypeString(int type) {
             return "ANSWER";
         case 4:
             return "RELEASE";
+        case 5: 
+            return "ENTERINFO";
+		case 6:
+			return "REQUESTTRANSPORT";
+		case 7:
+			return "ANSWERTRANSPORT";
+		case 8:
+			return "RELEASETRANSPORT";
+		case 0:
+			return "RESP";
         default:
             return "ERROR";
     }
@@ -108,7 +119,7 @@ void sendPacket(packet_t *data, int dst, int type)
     data->ts = global_ts; 
     data->rank = rank;
     global_ts++;
-    println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), dst, global_ts - 1, global_ts);
+    //println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), dst, global_ts - 1, global_ts);
     MPI_Send(data, 1, MPI_PAKIET_T, dst, type, MPI_COMM_WORLD);
 }
 
@@ -119,7 +130,7 @@ void sendToAllProcesses(packet_t *data, int type)
     global_ts++;
     for(int i = 0; i < size; i++){
         if(i != rank){
-            println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), i, global_ts - 1, global_ts);
+            //println("Wysylam pakiet typu %s do procesu %d, zwiekszam swoj zegar z %d na %d\n", 	returnTypeString(type).c_str(), i, global_ts - 1, global_ts);
             MPI_Send(data, 1, MPI_PAKIET_T, i, type, MPI_COMM_WORLD);
         }
     }

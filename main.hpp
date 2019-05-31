@@ -11,8 +11,13 @@ const int ROOT = 0;
 #define REQUEST 2
 #define ANSWER 3
 #define RELEASE 4
+#define ENTERINFO 5
+#define REQUESTTRANSPORT 6
+#define ANSWERTRANSPORT 7
+#define RELEASETRANSPORT 8
+#define RESP 9
 /* MAX_HANDLERS musi się równać wartości ostatniego typu pakietu + 1 */
-#define MAX_HANDLERS 5 
+#define MAX_HANDLERS 10
 
 #define STARTING_MONEY 1000
 
@@ -27,7 +32,7 @@ const int ROOT = 0;
 #include <string>
 
 /* FIELDNO: liczba pól w strukturze packet_t */
-#define FIELDNO 5
+#define FIELDNO 6
 typedef struct {
     int ts; /* zegar lamporta */
     int rank; 
@@ -35,6 +40,7 @@ typedef struct {
     int dst; /* pole ustawiane w sendPacket */
     int src; /* pole ustawiane w wątku komunikacyjnym na rank nadawcy */
 	int to_hunt;
+	int upolowano;
     /* przy dodaniu nowych pól zwiększy FIELDNO i zmodyfikuj 
        plik init.c od linijki 76
     */
@@ -81,12 +87,19 @@ void handleRequest(packet_t *pakiet, int numer_statusu);
 void finishHandler(packet_t *pakiet, int numer_statusu);
 void handleAnswer(packet_t *pakiet, int numer_statusu);
 void handleRelease(packet_t *pakiet, int numer_statusu);
+void handleEnterInfo(packet_t *pakiet, int numer_statusu);
 /**************************/
+void handleRequestTransport(packet_t *pakiet, int numer_statusu);
+void handleAnswerTransport(packet_t *pakiet, int numer_statusu);
+void handleReleaseTransport(packet_t *pakiet, int numer_statusu);
+/**************************/
+void handleReleaseResp();
 
 void mainLoop(void);
 void broadcastMessage(packet_t *pakiet, int typ, int REQUEST_ts);
 int max(int a, int b);
 void tryToEnterPark();
+void tryToLeavePark();
 void enterPark();
 void leavePark();
 void poluj();
